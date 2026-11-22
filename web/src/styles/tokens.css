@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/*
+ * toc.open Design Tokens — Editorial Light-First
+ * Swap font families, radii, or palette here without touching components.
+ */
+:root {
+  --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --bg-canvas: #FAF9F6;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F3F2EC;
+  --bg-hover: #ECEAE2;
+
+  --border-hairline: #E4E2DC;
+  --border-strong: #CFCBC0;
+
+  --ink-primary: #18181B;
+  --ink-secondary: #52525B;
+  --ink-muted: #71717A;
+
+  /* Epistemic Semantic Colors (color carries meaning only) */
+  --semantic-agree-bg: #ECFDF5;
+  --semantic-agree-border: #10B981;
+  --semantic-agree-text: #065F46;
+
+  --semantic-crux-bg: #FFFBEB;
+  --semantic-crux-border: #D97706;
+  --semantic-crux-text: #92400E;
+
+  --semantic-disagree-bg: #FFF1F2;
+  --semantic-disagree-border: #E11D48;
+  --semantic-disagree-text: #9F1239;
+
+  --actor-a-bg: #EEF2FF;
+  --actor-a-border: #4F46E5;
+  --actor-a-text: #3730A3;
+
+  --actor-b-bg: #F0FDFA;
+  --actor-b-border: #0D9488;
+  --actor-b-text: #115E59;
+
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-editorial {
+  font-family: var(--font-serif);
+}
+
+.font-mono-meta {
+  font-family: var(--font-mono);
+}
+
+.dot-grid-canvas {
+  background-color: var(--bg-canvas);
+  background-image: radial-gradient(#D9D6CC 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Crisp React Flow overrides */
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__edge-path {
+  transition: opacity 160ms ease, stroke-width 160ms ease;
+}
+
+.react-flow__node {
+  transition: opacity 160ms ease;
+}
