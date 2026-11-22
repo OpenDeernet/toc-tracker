@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, Check, ExternalLink, Share2, Zap } from 'lucide-react';
+import { ArrowLeftRight, Check, ExternalLink, Share2 } from 'lucide-react';
 import { api } from '../api/client';
 import {
   credencePill,
+  shortActorName,
   type ActorCard,
   type CompareResponse,
 } from '../types';
 import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
+import { CompareInspectorDrawer } from '../components/CompareInspectorDrawer';
 
 type CompareLens = 'flowchart' | 'matrix' | 'split';
 
@@ -19,7 +21,8 @@ export function CompareDiff() {
   const [actors, setActors] = useState<ActorCard[]>([]);
   const [data, setData] = useState<CompareResponse | null>(null);
   const [lens, setLens] = useState<CompareLens>('flowchart');
-  const [spotlightId, setSpotlightId] = useState<string | null>(null);
+  const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
+  const [focusClusterId, setFocusClusterId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,10 +32,20 @@ export function CompareDiff() {
 
   useEffect(() => {
     setError(null);
-    setSpotlightId(null);
+    setFocusClusterId(null);
+    setSelectedClusterId(null);
     api
       .compare(handleA, handleB)
-      .then(setData)
+      .then((res) => {
+        setData(res);
+        // Auto-open the top disagreement in the inspector so the user immediately sees why they differ
+        const topDisagreement = res.diff.top_cruxes.find(
+          (c) => c.category === 'direct_crux_disagreement'
+        );
+        if (topDisagreement) {
+          setSelectedClusterId(topDisagreement.cluster_id);
+        }
+      })
       .catch((e) => setError(e.message));
   }, [handleA, handleB]);
 
@@ -46,18 +59,27 @@ export function CompareDiff() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const selectedDiffNode =
+    data?.diff.nodes.find((n) => n.cluster_id === selectedClusterId) ?? null;
+
+  const shortA = data ? shortActorName(data.actor_a.display_name) : 'Person A';
+  const shortB = data ? shortActorName(data.actor_b.display_name) : 'Person B';
+
+  const directDisagreements =
+    data?.diff.top_cruxes.filter((c) => c.category === 'direct_crux_disagreement') ?? [];
+
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6">
       {/* Top Comparison Selector & View Switcher */}
       <section className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">
         <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full border border-[var(--actor-a-border)]/40 bg-[var(--actor-a-bg)]/50 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-full border border-[var(--actor-a-border)]/50 bg-[var(--actor-a-bg)] px-3 py-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-a-border)]" />
               <select
                 value={handleA}
                 onChange={(e) => updateHandles(e.target.value, handleB)}
-                className="bg-transparent text-xs font-bold text-[var(--ink-primary)] focus:outline-none"
+                className="bg-transparent text-xs font-bold text-[var(--actor-a-text)] focus:outline-none"
               >
                 {actors.map((a) => (
                   <option key={a.id} value={a.handle}>
@@ -69,18 +91,18 @@ export function CompareDiff() {
 
             <button
               onClick={() => updateHandles(handleB, handleA)}
-              title="Swap actors"
+              title="Swap"
               className="rounded-lg border border-[var(--border-hairline)] p-1.5 text-[var(--ink-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
             </button>
 
-            <div className="flex items-center gap-2 rounded-full border border-[var(--actor-b-border)]/40 bg-[var(--actor-b-bg)]/60 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-full border border-[var(--actor-b-border)]/50 bg-[var(--actor-b-bg)] px-3 py-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-b-border)]" />
               <select
                 value={handleB}
                 onChange={(e) => updateHandles(handleA, e.target.value)}
-                className="bg-transparent text-xs font-bold text-[var(--ink-primary)] focus:outline-none"
+                className="bg-transparent text-xs font-bold text-[var(--actor-b-text)] focus:outline-none"
               >
                 {actors.map((a) => (
                   <option key={a.id} value={a.handle}>
@@ -96,8 +118,8 @@ export function CompareDiff() {
               {(
                 [
                   ['flowchart', 'Flowchart'],
-                  ['matrix', 'Matrix'],
-                  ['split', 'Split'],
+                  ['matrix', 'Table'],
+                  ['split', 'Side-by-Side'],
                 ] as [CompareLens, string][]
               ).map(([k, label]) => (
                 <button
@@ -119,37 +141,60 @@ export function CompareDiff() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5" />}
-              {copied ? 'Link Copied' : 'Share Diff'}
+              {copied ? 'Link Copied' : 'Share'}
             </button>
 
             <a
               href={`/og/compare?a=${encodeURIComponent(handleA)}&b=${encodeURIComponent(handleB)}`}
               target="_blank"
               rel="noreferrer"
-              title="Open shareable PNG OpenGraph card"
+              title="Open shareable PNG card"
               className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-hairline)] px-2.5 py-1.5 font-mono-meta text-[11px] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
             >
-              OG PNG
+              Card PNG
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
 
-        {/* 3-Second Takeaway Crux Strip */}
+        {/* Plain-English Summary Strip */}
         {data && (
-          <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-[var(--border-hairline)] pt-3">
-            <span className="rounded-full bg-[var(--semantic-agree-bg)] px-3 py-1 font-mono-meta text-[11px] font-semibold text-[var(--semantic-agree-text)]">
-              {data.diff.summary.shared_ground_count} Shared Ground
+          <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-[var(--border-hairline)] pt-3 text-xs">
+            <span className="rounded-full bg-[var(--bg-subtle)] px-3 py-1 font-semibold text-[var(--ink-primary)]">
+              Both agree on {data.diff.summary.shared_ground_count}
             </span>
-            <span className="rounded-full bg-[var(--semantic-disagree-bg)] px-3 py-1 font-mono-meta text-[11px] font-semibold text-[var(--semantic-disagree-text)]">
-              {data.diff.summary.crux_disagreement_count} Sharpest Cruxes
-            </span>
-            <span className="rounded-full bg-[var(--semantic-crux-bg)] px-3 py-1 font-mono-meta text-[11px] font-semibold text-[var(--semantic-crux-text)]">
-              {data.diff.summary.unaddressed_count} Unaddressed
-            </span>
-            <span className="ml-auto text-xs font-medium text-[var(--ink-secondary)]">
-              {data.diff.summary.headline}
-            </span>
+            {data.diff.summary.crux_disagreement_count > 0 && (
+              <span className="rounded-full bg-[var(--semantic-disagree-bg)] px-3 py-1 font-semibold text-[var(--semantic-disagree-text)]">
+                Disagree on {data.diff.summary.crux_disagreement_count}
+              </span>
+            )}
+            {directDisagreements.map((d) => {
+              const active = focusClusterId === d.cluster_id;
+              return (
+                <button
+                  key={d.cluster_id}
+                  onClick={() => {
+                    setFocusClusterId((prev) => (prev === d.cluster_id ? null : d.cluster_id));
+                    setSelectedClusterId(d.cluster_id);
+                  }}
+                  className={`rounded-full border px-3 py-1 font-semibold transition ${
+                    active
+                      ? 'border-rose-600 bg-rose-600 text-white'
+                      : 'border-rose-200 bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-rose-400'
+                  }`}
+                >
+                  Focus: {d.canonical_title}
+                </button>
+              );
+            })}
+            {focusClusterId && (
+              <button
+                onClick={() => setFocusClusterId(null)}
+                className="text-xs font-medium text-[var(--ink-muted)] underline"
+              >
+                Show all
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -161,63 +206,45 @@ export function CompareDiff() {
       )}
 
       {data && (
-        <div className="mt-4 space-y-4">
-          {/* Interactive Top Crux Spotlight Pills */}
-          {data.diff.top_cruxes.length > 0 && lens === 'flowchart' && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-                Spotlight Crux Path:
-              </span>
-              {data.diff.top_cruxes.map((crux) => {
-                const active = spotlightId === crux.cluster_id;
-                return (
-                  <button
-                    key={crux.cluster_id}
-                    onClick={() => setSpotlightId((prev) => (prev === crux.cluster_id ? null : crux.cluster_id))}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                      active
-                        ? 'border-rose-600 bg-rose-600 text-white'
-                        : 'border-rose-200 bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-rose-400'
-                    }`}
-                  >
-                    <Zap className="h-3 w-3" />
-                    {crux.canonical_title}
-                  </button>
-                );
-              })}
-              {spotlightId && (
-                <button
-                  onClick={() => setSpotlightId(null)}
-                  className="text-xs font-medium text-[var(--ink-muted)] underline"
-                >
-                  Clear spotlight
-                </button>
+        <div className="mt-4">
+          {/* LENS 1: UNIFIED 5-COLUMN OVERLAY + INSPECTOR DRAWER */}
+          {lens === 'flowchart' && (
+            <div className={`grid gap-4 ${selectedDiffNode ? 'lg:grid-cols-[1fr_360px]' : 'grid-cols-1'}`}>
+              <SwimlaneCanvas
+                mode="compare"
+                diff={data.diff}
+                actorAShort={shortA}
+                actorBShort={shortB}
+                actorAFull={data.actor_a.display_name}
+                actorBFull={data.actor_b.display_name}
+                spotlightClusterId={focusClusterId}
+                selectedClusterId={selectedClusterId}
+                onSelectCluster={(cid) => setSelectedClusterId(cid)}
+                heightClass="h-[560px]"
+              />
+              {selectedDiffNode && (
+                <CompareInspectorDrawer
+                  diffNode={selectedDiffNode}
+                  actorA={data.actor_a}
+                  actorB={data.actor_b}
+                  snapshotA={data.snapshot_a}
+                  snapshotB={data.snapshot_b}
+                  concepts={data.concepts}
+                  onClose={() => setSelectedClusterId(null)}
+                />
               )}
             </div>
           )}
 
-          {/* LENS 1: UNIFIED 5-COLUMN OVERLAY FLOWCHART */}
-          {lens === 'flowchart' && (
-            <SwimlaneCanvas
-              mode="compare"
-              diff={data.diff}
-              actorAShort="A"
-              actorBShort="B"
-              spotlightClusterId={spotlightId}
-              onSelectCluster={(cid) => setSpotlightId((prev) => (prev === cid ? null : cid))}
-              heightClass="h-[540px]"
-            />
-          )}
-
-          {/* LENS 2: MATRIX / TABLE COMPARISON (Non-Flowchart Lens) */}
+          {/* LENS 2: PLAIN-ENGLISH TABLE COMPARISON */}
           {lens === 'matrix' && (
             <div className="overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
                   <tr className="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] font-mono-meta text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">
                     <th className="px-4 py-3">Stage</th>
-                    <th className="px-4 py-3">Concept / Crux</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Claim / Step</th>
+                    <th className="px-4 py-3">Comparison</th>
                     <th className="px-4 py-3 text-[var(--actor-a-text)]">{data.actor_a.display_name}</th>
                     <th className="px-4 py-3 text-[var(--actor-b-text)]">{data.actor_b.display_name}</th>
                   </tr>
@@ -239,35 +266,32 @@ export function CompareDiff() {
                       <td className="px-4 py-3">
                         {dn.category === 'direct_crux_disagreement' && (
                           <span className="rounded-full bg-[var(--semantic-disagree-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--semantic-disagree-text)]">
-                            Crux Gap
+                            Disagree
                           </span>
                         )}
                         {dn.category === 'shared_ground' && (
-                          <span className="rounded-full bg-[var(--semantic-agree-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--semantic-agree-text)]">
-                            Shared
+                          <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--ink-primary)]">
+                            Both agree
                           </span>
                         )}
-                        {dn.category === 'unaddressed_load_bearing' && (
-                          <span className="rounded-full bg-[var(--semantic-crux-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--semantic-crux-text)]">
-                            Unaddressed
-                          </span>
-                        )}
-                        {(dn.category === 'unique_to_a' || dn.category === 'unique_to_b') && (
+                        {(dn.category === 'unique_to_a' ||
+                          dn.category === 'unique_to_b' ||
+                          dn.category === 'unaddressed_load_bearing') && (
                           <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 font-mono-meta text-[10px] text-[var(--ink-muted)]">
-                            Unique Path
+                            {dn.node_a ? `Only ${shortA}` : `Only ${shortB}`}
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {dn.node_a ? (
                           <div>
-                            <span className="font-mono-meta font-semibold">
+                            <span className="font-mono-meta font-semibold text-[var(--actor-a-text)]">
                               {dn.node_a.credence
                                 ? credencePill(dn.node_a.credence)
                                 : dn.node_a.bet_priority ?? dn.node_a.stance}
                             </span>
                             {dn.node_a.stance === 'rejected' && (
-                              <span className="ml-1.5 text-[10px] text-rose-700">(Rejected)</span>
+                              <span className="ml-1.5 text-[10px] text-rose-700">(Not betting on this)</span>
                             )}
                             {dn.node_a.note && (
                               <p className="mt-0.5 max-w-xs text-[11px] text-[var(--ink-secondary)]">
@@ -276,19 +300,19 @@ export function CompareDiff() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-[var(--ink-muted)]">—</span>
+                          <span className="text-[var(--ink-muted)]">Not mentioned</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {dn.node_b ? (
                           <div>
-                            <span className="font-mono-meta font-semibold">
+                            <span className="font-mono-meta font-semibold text-[var(--actor-b-text)]">
                               {dn.node_b.credence
                                 ? credencePill(dn.node_b.credence)
                                 : dn.node_b.bet_priority ?? dn.node_b.stance}
                             </span>
                             {dn.node_b.stance === 'rejected' && (
-                              <span className="ml-1.5 text-[10px] text-rose-700">(Rejected)</span>
+                              <span className="ml-1.5 text-[10px] text-rose-700">(Not betting on this)</span>
                             )}
                             {dn.node_b.note && (
                               <p className="mt-0.5 max-w-xs text-[11px] text-[var(--ink-secondary)]">
@@ -297,7 +321,7 @@ export function CompareDiff() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-[var(--ink-muted)]">—</span>
+                          <span className="text-[var(--ink-muted)]">Not mentioned</span>
                         )}
                       </td>
                     </tr>
@@ -307,7 +331,7 @@ export function CompareDiff() {
             </div>
           )}
 
-          {/* LENS 3: SPLIT INDIVIDUAL FLOWCHARTS */}
+          {/* LENS 3: SIDE-BY-SIDE INDIVIDUAL FLOWCHARTS */}
           {lens === 'split' && (
             <div className="space-y-4">
               <div>

@@ -6,6 +6,7 @@ Cargo.lock
 web/node_modules
 web/dist
 web/.vite
+*.tsbuildinfo
 
 # Env & OS
 .env

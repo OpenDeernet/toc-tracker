@@ -218,6 +218,16 @@ export interface CompareResponse {
   concepts: Record<string, Concept>;
 }
 
+export interface ActorStanceChip {
+  actor_id: string;
+  handle: string;
+  display_name: string;
+  avatar_initials: string;
+  credence_label: string;
+  score: number;
+  is_rejected: boolean;
+}
+
 export interface FieldCruxSummary {
   root_concept_id: string;
   title: string;
@@ -230,6 +240,33 @@ export interface FieldCruxSummary {
   contested_score: number;
   distribution: [number, number, number, number, number];
   tags: string[];
+  supporters: ActorStanceChip[];
+  skeptics: ActorStanceChip[];
+}
+
+export function shortActorName(displayName: string): string {
+  const trimmed = displayName.trim();
+  if (!trimmed) return 'Actor';
+  if (trimmed.toLowerCase().startsWith('compute governance')) return 'Compute Gov';
+  const first = trimmed.split(/\s+/)[0];
+  return first.length >= 2 ? first : trimmed.slice(0, 12);
+}
+
+const ACTOR_PALETTES = [
+  { bg: '#F3E8FF', text: '#5B21B6', border: '#C4B5FD', accent: '#7C3AED' }, // Violet
+  { bg: '#ECFDF5', text: '#065F46', border: '#6EE7B7', accent: '#059669' }, // Emerald
+  { bg: '#EFF6FF', text: '#1E40AF', border: '#93C5FD', accent: '#2563EB' }, // Blue
+  { bg: '#FFF7ED', text: '#9A3412', border: '#FDBA74', accent: '#EA580C' }, // Warm Terracotta
+  { bg: '#FDF2F8', text: '#9D174D', border: '#F9A8D4', accent: '#DB2777' }, // Rose
+  { bg: '#FEFCE8', text: '#854D0E', border: '#FDE047', accent: '#CA8A04' }, // Ochre
+];
+
+export function actorPalette(handle: string) {
+  let hash = 0;
+  for (let i = 0; i < handle.length; i++) {
+    hash = (hash * 31 + handle.charCodeAt(i)) >>> 0;
+  }
+  return ACTOR_PALETTES[hash % ACTOR_PALETTES.length];
 }
 
 export interface ConceptActorPosition {

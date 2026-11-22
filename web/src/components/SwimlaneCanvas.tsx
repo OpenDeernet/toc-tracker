@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
   MarkerType,
+  useReactFlow,
   type Edge,
   type Node,
 } from '@xyflow/react';
@@ -20,10 +21,36 @@ import { TocNodeCard, type CompareNodeData, type SingleNodeData } from './NodeCa
 
 const nodeTypes = { tocNode: TocNodeCard };
 
-const COL_WIDTH = 264;
-const ROW_HEIGHT = 152;
-const TOP_OFFSET = 58;
+const COL_WIDTH = 312;
+const SINGLE_ROW_HEIGHT = 176;
+const COMPARE_ROW_HEIGHT = 212;
+const TOP_OFFSET = 78;
 const LEFT_OFFSET = 28;
+
+function AutoFitOnResize({ containerRef, nodeCount }: { containerRef: React.RefObject<HTMLDivElement | null>; nodeCount: number }) {
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let rafId = 0;
+    const triggerFit = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        fitView({ padding: 0.14, duration: 180 });
+      });
+    };
+    triggerFit();
+    const ro = new ResizeObserver(triggerFit);
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, [containerRef, fitView, nodeCount]);
+
+  return null;
+}
 
 interface SingleCanvasProps {
   mode: 'single';
@@ -41,7 +68,10 @@ interface CompareCanvasProps {
   diff: DiffResult;
   actorAShort: string;
   actorBShort: string;
+  actorAFull?: string;
+  actorBFull?: string;
   spotlightClusterId?: string | null;
+  selectedClusterId?: string | null;
   onSelectCluster?: (clusterId: string) => void;
   heightClass?: string;
 }
@@ -50,6 +80,7 @@ type SwimlaneCanvasProps = SingleCanvasProps | CompareCanvasProps;
 
 export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
   const heightClass = props.heightClass ?? 'h-[520px]';
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const { rfNodes, rfEdges, mobileByStage } = useMemo(() => {
     if (props.mode === 'single') {
@@ -66,12 +97,12 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       }
 
       const maxRows = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
-      const totalH = maxRows * ROW_HEIGHT;
+      const totalH = maxRows * SINGLE_ROW_HEIGHT;
 
       const builtNodes: Node[] = [];
       for (const s of STAGES) {
         const col = byStage[s.key];
-        const colH = col.length * ROW_HEIGHT;
+        const colH = col.length * SINGLE_ROW_HEIGHT;
         const startY = TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
         col.forEach((n, idx) => {
           const concept = props.concepts[n.concept_id];
@@ -98,7 +129,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           builtNodes.push({
             id: n.local_id,
             type: 'tocNode',
-            position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * ROW_HEIGHT },
+            position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * SINGLE_ROW_HEIGHT },
             data,
             draggable: false,
           });
@@ -140,9 +171,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       };
     }
 
-    // Compare mode
-    const { diff, actorAShort, actorBShort, spotlightClusterId } = props;
-    // Show active nodes + crux disagreements (even if rejected on one side!)
+    // Compare mode — strictly 2 identity colors: Purple (Actor A) & Green (Actor B)
+    const { diff, actorAShort, actorBShort, spotlightClusterId, selectedClusterId } = props;
     const visibleNodes = diff.nodes.filter((dn) => {
       if (dn.category === 'direct_crux_disagreement') return true;
       const actA = dn.node_a && (dn.node_a.stance === 'active' || dn.node_a.stance === 'open_crux');
@@ -150,7 +180,6 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       return Boolean(actA || actB);
     });
 
-    // Compute spotlight connected cluster set (upstream + downstream of spotlightClusterId)
     const spotlightSet = new Set<string>();
     if (spotlightClusterId) {
       spotlightSet.add(spotlightClusterId);
@@ -182,49 +211,53 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     }
 
     const maxRows = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
-    const totalH = maxRows * ROW_HEIGHT;
+    const totalH = maxRows * COMPARE_ROW_HEIGHT;
 
     const builtNodes: Node[] = [];
     for (const s of STAGES) {
       const col = byStage[s.key];
-      const colH = col.length * ROW_HEIGHT;
+      const colH = col.length * COMPARE_ROW_HEIGHT;
       const startY = TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
       col.forEach((dn, idx) => {
         const labelA = dn.node_a
           ? dn.node_a.credence
             ? credencePill(dn.node_a.credence)
             : dn.node_a.bet_priority === 'primary'
-              ? 'Primary Bet'
+              ? 'Bet'
               : dn.node_a.stance === 'rejected'
-                ? 'Rejected'
-                : 'Active'
+                ? 'Skeptical'
+                : ''
           : undefined;
         const labelB = dn.node_b
           ? dn.node_b.credence
             ? credencePill(dn.node_b.credence)
             : dn.node_b.bet_priority === 'primary'
-              ? 'Primary Bet'
+              ? 'Bet'
               : dn.node_b.stance === 'rejected'
-                ? 'Rejected'
-                : 'Active'
+                ? 'Skeptical'
+                : ''
           : undefined;
         const dimmed = Boolean(spotlightClusterId && !spotlightSet.has(dn.cluster_id));
         const data: CompareNodeData = {
           kind: 'compare',
           title: dn.canonical_title,
           category: dn.category,
+          hasA: Boolean(dn.node_a),
+          hasB: Boolean(dn.node_b),
           labelA,
           labelB,
+          rejectedA: dn.node_a?.stance === 'rejected' || dn.node_a?.stance === 'deprioritized',
+          rejectedB: dn.node_b?.stance === 'rejected' || dn.node_b?.stance === 'deprioritized',
           actorAShort,
           actorBShort,
           criteriaCount: dn.update_criteria_count,
-          selected: spotlightClusterId === dn.cluster_id,
+          selected: (selectedClusterId ?? spotlightClusterId) === dn.cluster_id,
           dimmed,
         };
         builtNodes.push({
           id: dn.cluster_id,
           type: 'tocNode',
-          position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * ROW_HEIGHT },
+          position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * COMPARE_ROW_HEIGHT },
           data,
           draggable: false,
         });
@@ -236,7 +269,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       .filter((e) => visibleIds.has(e.source_cluster_id) && visibleIds.has(e.target_cluster_id))
       .map((e) => {
         const color =
-          e.owner === 'actor_a' ? '#4F46E5' : e.owner === 'actor_b' ? '#0D9488' : '#71717A';
+          e.owner === 'actor_a' ? '#7C3AED' : e.owner === 'actor_b' ? '#059669' : '#94A3B8';
         const dimmed = Boolean(
           spotlightClusterId &&
             (!spotlightSet.has(e.source_cluster_id) || !spotlightSet.has(e.target_cluster_id))
@@ -270,10 +303,10 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           title: dn.canonical_title,
           badge:
             dn.category === 'direct_crux_disagreement'
-              ? 'CRUX GAP'
-              : dn.category === 'shared_ground'
-                ? 'Shared'
-                : dn.node_a && !dn.node_b
+              ? 'Disagree'
+              : dn.node_a && dn.node_b
+                ? 'Both'
+                : dn.node_a
                   ? actorAShort
                   : actorBShort,
           isCrux: dn.category === 'direct_crux_disagreement',
@@ -285,14 +318,44 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
   return (
     <>
       {/* Desktop / Tablet 5-Column Swimlane Flowchart */}
-      <div className={`relative hidden overflow-hidden rounded-2xl border border-[var(--border-hairline)] dot-grid-canvas md:block ${heightClass}`}>
-        {/* 5-Stage Column Headers */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-5 border-b border-dashed border-[var(--border-hairline)] bg-[var(--bg-canvas)]/85 px-4 py-2.5 backdrop-blur-[2px]">
-          {STAGES.map((s) => (
-            <div key={s.key} className="font-mono-meta text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-              {s.num}. {s.label}
+      <div
+        ref={containerRef}
+        className={`relative hidden overflow-hidden rounded-2xl border border-[var(--border-hairline)] dot-grid-canvas md:block ${heightClass}`}
+      >
+        {/* Top Bar inside Canvas: Column Headers + Clear 2-Color Legend in Compare Mode */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 border-b border-dashed border-[var(--border-hairline)] bg-[var(--bg-canvas)]/90 backdrop-blur-[2px]">
+          {props.mode === 'compare' && (
+            <div className="flex items-center justify-between border-b border-[var(--border-hairline)]/60 px-4 py-1.5 text-[11px]">
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-a-text)]">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-a-border)]" />
+                  {props.actorAFull ?? props.actorAShort}
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-b-text)]">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-b-border)]" />
+                  {props.actorBFull ?? props.actorBShort}
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-medium text-[var(--ink-secondary)]">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--actor-a-border) 50%, var(--actor-b-border) 50%)',
+                    }}
+                  />
+                  Shared (dual border)
+                </span>
+              </div>
+              <span className="text-[var(--ink-muted)]">Click any card to read reasoning & update criteria</span>
             </div>
-          ))}
+          )}
+          <div className="grid grid-cols-5 px-4 py-2">
+            {STAGES.map((s) => (
+              <div key={s.key} className="font-mono-meta text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+                {s.num}. {s.label}
+              </div>
+            ))}
+          </div>
         </div>
 
         <ReactFlow
@@ -300,7 +363,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           edges={rfEdges}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.16 }}
+          fitViewOptions={{ padding: 0.18 }}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={true}
@@ -314,6 +377,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             }
           }}
         >
+          <AutoFitOnResize containerRef={containerRef} nodeCount={rfNodes.length} />
           <Controls showInteractive={false} className="!border-[var(--border-hairline)] !bg-[var(--bg-surface)] !shadow-xs" />
         </ReactFlow>
       </div>
@@ -329,7 +393,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
               {stage.num}. {stage.label}
             </div>
             {items.length === 0 ? (
-              <div className="text-xs italic text-[var(--ink-muted)]">No active nodes in this stage.</div>
+              <div className="text-xs italic text-[var(--ink-muted)]">None</div>
             ) : (
               <div className="space-y-2">
                 {items.map((item) => (
@@ -342,7 +406,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
                     }}
                     className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-xs ${
                       item.isCrux
-                        ? 'border-amber-300 bg-amber-50/50'
+                        ? 'border-rose-300 bg-rose-50/40'
                         : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)]'
                     }`}
                   >

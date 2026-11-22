@@ -1204,8 +1204,10 @@ mod tests {
                     .and_then(|sid| bundle.snapshots.iter().find(|s| &s.id == sid).cloned())
             })
             .collect();
-        let cruxes = compute_field_cruxes(&primary_snaps, &bundle.concepts, &bundle.attestations);
+        let cruxes = compute_field_cruxes(&bundle.actors, &primary_snaps, &bundle.concepts, &bundle.attestations);
         assert!(!cruxes.is_empty());
-        assert!(cruxes.iter().any(|c| c.root_concept_id == "cpt_interp_scales"));
+        let interp = cruxes.iter().find(|c| c.root_concept_id == "cpt_interp_scales").unwrap();
+        assert!(!interp.supporters.is_empty());
+        assert!(!interp.skeptics.is_empty());
     }
 }

@@ -51,7 +51,7 @@ export function ConceptExplorer() {
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        All Field Cruxes
+        All Disagreements
       </Link>
 
       <header className="mt-4 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">

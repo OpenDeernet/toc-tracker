@@ -21,8 +21,12 @@ export interface CompareNodeData {
   kind: 'compare';
   title: string;
   category: DiffCategory;
+  hasA: boolean;
+  hasB: boolean;
   labelA?: string;
   labelB?: string;
+  rejectedA?: boolean;
+  rejectedB?: boolean;
   actorAShort: string;
   actorBShort: string;
   criteriaCount: number;
@@ -37,120 +41,88 @@ export function TocNodeCard({ data }: NodeProps) {
   const d = data as TocNodeData;
 
   if (d.kind === 'compare') {
-    const isShared = d.category === 'shared_ground';
-    const isCruxGap = d.category === 'direct_crux_disagreement';
-    const isUnaddressed = d.category === 'unaddressed_load_bearing';
-    const isOnlyA = d.category === 'unique_to_a' || (isUnaddressed && !!d.labelA && !d.labelB);
-    const isOnlyB = d.category === 'unique_to_b' || (isUnaddressed && !!d.labelB && !d.labelA);
+    const isDisagree = d.category === 'direct_crux_disagreement';
+    const hasBoth = d.hasA && d.hasB;
 
-    let borderClass = 'border-[var(--border-hairline)]';
-    let stripeColor = 'bg-transparent';
-    if (isCruxGap) {
-      borderClass = 'border-[var(--semantic-disagree-border)] ring-4 ring-rose-500/10';
-    } else if (isShared) {
-      borderClass = 'border-[var(--border-hairline)]';
-      stripeColor = 'bg-[var(--semantic-agree-border)]';
-    } else if (isOnlyA) {
-      borderClass = 'border-[var(--border-hairline)]';
-      stripeColor = 'bg-[var(--actor-a-border)]';
-    } else if (isOnlyB) {
-      borderClass = 'border-[var(--border-hairline)]';
-      stripeColor = 'bg-[var(--actor-b-border)]';
-    }
-
-    return (
+    const innerCard = (
       <div
-        className={`relative w-[228px] overflow-hidden rounded-[var(--radius-card)] border bg-[var(--bg-surface)] px-3.5 py-3 shadow-xs transition ${borderClass} ${
-          d.selected ? 'ring-2 ring-[var(--ink-primary)]' : ''
-        } ${d.dimmed ? 'opacity-25' : 'opacity-100'}`}
+        className={`relative w-[228px] cursor-pointer rounded-[var(--radius-card)] bg-[var(--bg-surface)] px-3.5 py-3 transition ${
+          hasBoth
+            ? ''
+            : d.hasA
+              ? 'border-2 border-[var(--actor-a-border)]'
+              : 'border-2 border-[var(--actor-b-border)]'
+        } ${d.selected ? 'ring-4 ring-zinc-900/15' : 'shadow-xs hover:shadow-sm'}`}
       >
         <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
         <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
 
-        {stripeColor !== 'bg-transparent' && (
-          <div className={`absolute inset-y-2 left-1.5 w-[3px] rounded-full ${stripeColor}`} />
+        {isDisagree && (
+          <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--semantic-disagree-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-bold text-[var(--semantic-disagree-text)]">
+            Disagree
+          </div>
         )}
 
-        <div className={stripeColor !== 'bg-transparent' ? 'pl-2' : ''}>
-          {isCruxGap && (
-            <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--semantic-crux-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold tracking-wide text-[var(--semantic-crux-text)]">
-              <Zap className="h-2.5 w-2.5" />
-              CRUX GAP
-            </div>
+        <div className="text-[13px] font-semibold leading-snug text-[var(--ink-primary)]">
+          {d.title}
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {d.hasA && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full bg-[var(--actor-a-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--actor-a-text)] ${
+                d.rejectedA ? 'line-through opacity-80' : ''
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--actor-a-border)]" />
+              {d.labelA ? `${d.actorAShort}: ${d.labelA}` : d.actorAShort}
+            </span>
           )}
-          {isUnaddressed && (
-            <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--semantic-crux-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold tracking-wide text-[var(--semantic-crux-text)]">
-              UNADDRESSED CRUX
-            </div>
-          )}
-
-          <div className="text-[13px] font-semibold leading-snug text-[var(--ink-primary)]">
-            {d.title}
-          </div>
-
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            {isShared && d.labelA && d.labelB ? (
-              <span className="rounded-full bg-[var(--semantic-agree-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--semantic-agree-text)]">
-                A: {d.labelA} · B: {d.labelB}
-              </span>
-            ) : (
-              <>
-                {d.labelA && (
-                  <span className="rounded-full bg-[var(--actor-a-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--actor-a-text)]">
-                    {d.actorAShort}: {d.labelA}
-                  </span>
-                )}
-                {d.labelB && (
-                  <span className="rounded-full bg-[var(--actor-b-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--actor-b-text)]">
-                    {d.actorBShort}: {d.labelB}
-                  </span>
-                )}
-                {!d.labelA && d.labelB && isUnaddressed && (
-                  <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 font-mono-meta text-[10px] text-[var(--ink-muted)]">
-                    {d.actorAShort}: Unaddressed
-                  </span>
-                )}
-                {d.labelA && !d.labelB && isUnaddressed && (
-                  <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 font-mono-meta text-[10px] text-[var(--ink-muted)]">
-                    {d.actorBShort}: Unaddressed
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-
-          {d.criteriaCount > 0 && (
-            <div className="mt-2 flex items-center gap-1 text-[10px] text-[var(--ink-muted)]">
-              <Target className="h-3 w-3 text-amber-600" />
-              <span>{d.criteriaCount} update {d.criteriaCount === 1 ? 'criterion' : 'criteria'}</span>
-            </div>
+          {d.hasB && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full bg-[var(--actor-b-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--actor-b-text)] ${
+                d.rejectedB ? 'line-through opacity-80' : ''
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--actor-b-border)]" />
+              {d.labelB ? `${d.actorBShort}: ${d.labelB}` : d.actorBShort}
+            </span>
           )}
         </div>
+
+        {d.criteriaCount > 0 && (
+          <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[var(--ink-muted)]">
+            <Target className="h-3 w-3 text-amber-600" />
+            <span>
+              {d.criteriaCount} update {d.criteriaCount === 1 ? 'criterion' : 'criteria'} · click to view
+            </span>
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <div className={`transition ${d.dimmed ? 'opacity-25' : 'opacity-100'}`}>
+        {hasBoth ? <div className="dual-owner-border">{innerCard}</div> : innerCard}
       </div>
     );
   }
 
   // Single actor card
   const borderStyle = d.selected
-    ? 'border-[var(--semantic-crux-border)] ring-4 ring-amber-500/15'
+    ? 'border-[var(--ink-primary)] ring-4 ring-zinc-900/10'
     : d.isCrux
-      ? 'border-amber-400/80'
+      ? 'border-amber-400/90'
       : 'border-[var(--border-hairline)] hover:border-[var(--border-strong)]';
 
   return (
     <div
-      className={`w-[220px] rounded-[var(--radius-card)] border bg-[var(--bg-surface)] px-3.5 py-3 shadow-xs transition ${borderStyle} ${
+      className={`w-[220px] cursor-pointer rounded-[var(--radius-card)] border bg-[var(--bg-surface)] px-3.5 py-3 shadow-xs transition ${borderStyle} ${
         d.dimmed ? 'opacity-30' : 'opacity-100'
       }`}
     >
       <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
       <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
-
-      {d.selected && (
-        <div className="mb-1 font-mono-meta text-[9px] font-semibold uppercase tracking-wider text-amber-700">
-          Selected
-        </div>
-      )}
 
       <div className="text-[13px] font-semibold leading-snug text-[var(--ink-primary)]">
         {d.title}
@@ -160,14 +132,14 @@ export function TocNodeCard({ data }: NodeProps) {
         {d.isCrux && (
           <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--semantic-crux-bg)] px-2 py-0.5 font-mono-meta text-[10px] font-semibold text-[var(--semantic-crux-text)]">
             <Zap className="h-2.5 w-2.5" />
-            CRUX
+            Key Crux
           </span>
         )}
         {d.credenceLabel && (
           <span
             className={`rounded-full px-2 py-0.5 font-mono-meta text-[10px] font-semibold ${
               d.isNumeric
-                ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                ? 'border border-amber-200 bg-amber-50 text-amber-900'
                 : 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)]'
             }`}
           >
@@ -196,7 +168,7 @@ export function TocNodeCard({ data }: NodeProps) {
             </span>
           )}
           {d.isFork && (
-            <span className="inline-flex items-center gap-0.5" title="Forked wording from canonical concept">
+            <span className="inline-flex items-center gap-0.5" title="Custom phrasing forked from shared concept">
               <GitFork className="h-3 w-3" />
             </span>
           )}

@@ -157,18 +157,18 @@ pub fn render_compare_og_png(
   <circle cx="632" cy="148" r="9" fill="#0D9488"/>
   <text x="654" y="156" font-size="26" font-weight="700" fill="#18181B">{name_b}</text>
 
-  <rect x="56" y="218" width="260" height="54" rx="27" fill="#D1FAE5"/>
-  <text x="86" y="252" font-size="20" font-weight="700" fill="#065F46">{shared} Shared Ground</text>
+  <rect x="56" y="218" width="260" height="54" rx="27" fill="#F3F2EC"/>
+  <text x="86" y="252" font-size="20" font-weight="700" fill="#18181B">Both agree ({shared})</text>
 
   <rect x="336" y="218" width="290" height="54" rx="27" fill="#FFE4E6"/>
-  <text x="366" y="252" font-size="20" font-weight="700" fill="#9F1239">{cruxes} Sharpest Cruxes</text>
+  <text x="366" y="252" font-size="20" font-weight="700" fill="#9F1239">Disagree ({cruxes})</text>
 
   <rect x="646" y="218" width="320" height="54" rx="27" fill="#FEF3C7"/>
   <text x="676" y="252" font-size="20" font-weight="700" fill="#92400E">{overlap}% Premise Overlap</text>
 
   <rect x="56" y="312" width="1088" height="250" rx="18" fill="#FFFFFF" stroke="#E11D48" stroke-width="2.5"/>
-  <rect x="88" y="344" width="168" height="32" rx="16" fill="#FEF3C7"/>
-  <text x="106" y="366" font-size="14" font-family="monospace" font-weight="700" fill="#92400E">TOP CRUX GAP</text>
+  <rect x="88" y="344" width="210" height="32" rx="16" fill="#FFE4E6"/>
+  <text x="106" y="366" font-size="14" font-family="monospace" font-weight="700" fill="#9F1239">MAIN DISAGREEMENT</text>
   <text x="88" y="432" font-size="34" font-weight="700" fill="#18181B">{top_crux}</text>
   <text x="88" y="488" font-size="21" fill="#52525B">{headline}</text>
   <text x="88" y="534" font-size="16" font-family="monospace" fill="#71717A">Compare positions, credences &amp; update criteria at toc.open</text>

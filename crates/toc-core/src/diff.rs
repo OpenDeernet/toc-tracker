@@ -68,6 +68,17 @@ pub struct DiffResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActorStanceChip {
+    pub actor_id: String,
+    pub handle: String,
+    pub display_name: String,
+    pub avatar_initials: String,
+    pub credence_label: String,
+    pub score: i32,
+    pub is_rejected: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldCruxSummary {
     pub root_concept_id: String,
     pub title: String,
@@ -80,6 +91,8 @@ pub struct FieldCruxSummary {
     pub contested_score: f32,
     pub distribution: [usize; 5], // VeryLow..VeryHigh
     pub tags: Vec<String>,
+    pub supporters: Vec<ActorStanceChip>,
+    pub skeptics: Vec<ActorStanceChip>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -428,19 +441,19 @@ pub fn diff_snapshots(
     let headline = if let Some(top) = top_cruxes.first() {
         if shared_ground_count > 0 {
             format!(
-                "Share {} premise/bottleneck points; diverge sharpest on \"{}\"",
+                "Agree on {} points; main disagreement is \"{}\"",
                 shared_ground_count, top.canonical_title
             )
         } else {
-            format!("Diverge sharpest on \"{}\"", top.canonical_title)
+            format!("Main disagreement: \"{}\"", top.canonical_title)
         }
     } else if shared_ground_count > 0 {
         format!(
-            "Strong alignment across {} shared nodes with different concrete bets",
+            "Agree on {} points, with different day-to-day bets",
             shared_ground_count
         )
     } else {
-        "Distinct threat models and intervention paths".to_string()
+        "Different threat models and approaches".to_string()
     };
 
     DiffResult {
@@ -462,11 +475,13 @@ pub fn diff_snapshots(
 }
 
 pub fn compute_field_cruxes(
+    actors: &[Actor],
     snapshots: &[ToCSnapshot],
     concepts: &[Concept],
     attestations: &[LinkAttestation],
 ) -> Vec<FieldCruxSummary> {
     let mut resolver = ClusterResolver::new(concepts, attestations);
+    let actor_map: HashMap<&str, &Actor> = actors.iter().map(|a| (a.id.as_str(), a)).collect();
 
     struct Agg {
         stage: Stage,
@@ -475,11 +490,16 @@ pub fn compute_field_cruxes(
         rejected_count: usize,
         dist: [usize; 5],
         actors: HashSet<String>,
+        supporters: Vec<ActorStanceChip>,
+        skeptics: Vec<ActorStanceChip>,
     }
 
     let mut groups: HashMap<String, Agg> = HashMap::new();
 
     for snap in snapshots {
+        let Some(actor) = actor_map.get(snap.actor_id.as_str()) else {
+            continue;
+        };
         for n in &snap.nodes {
             if matches!(n.stage, Stage::Bet | Stage::Outcome) {
                 continue;
@@ -492,14 +512,26 @@ pub fn compute_field_cruxes(
                 rejected_count: 0,
                 dist: [0; 5],
                 actors: HashSet::new(),
+                supporters: Vec::new(),
+                skeptics: Vec::new(),
             });
             if !entry.actors.insert(snap.actor_id.clone()) {
                 continue;
             }
-            match n.stance {
-                NodeStance::Active | NodeStance::OpenCrux => entry.active_count += 1,
-                NodeStance::Rejected | NodeStance::Deprioritized => entry.rejected_count += 1,
+            let is_rejected = matches!(n.stance, NodeStance::Rejected | NodeStance::Deprioritized);
+            if is_rejected {
+                entry.rejected_count += 1;
+            } else {
+                entry.active_count += 1;
             }
+
+            let score = n.credence.as_ref().map(|c| c.numeric_score()).unwrap_or(50);
+            let cred_label = n
+                .credence
+                .as_ref()
+                .map(|c| c.display_pill())
+                .unwrap_or_else(|| if is_rejected { "Skeptical".into() } else { "Likely".into() });
+
             if let Some(cred) = &n.credence {
                 entry.scores.push(cred.numeric_score());
                 let idx = match cred.band {
@@ -511,14 +543,32 @@ pub fn compute_field_cruxes(
                 };
                 entry.dist[idx] += 1;
             }
+
+            let chip = ActorStanceChip {
+                actor_id: actor.id.clone(),
+                handle: actor.handle.clone(),
+                display_name: actor.display_name.clone(),
+                avatar_initials: actor.avatar_initials.clone(),
+                credence_label: cred_label,
+                score,
+                is_rejected,
+            };
+            if is_rejected || score <= 35 {
+                entry.skeptics.push(chip);
+            } else {
+                entry.supporters.push(chip);
+            }
         }
     }
 
     let mut out = Vec::new();
-    for (cid, agg) in groups {
+    for (cid, mut agg) in groups {
         if agg.actors.len() < 2 {
             continue;
         }
+        agg.supporters.sort_by(|a, b| b.score.cmp(&a.score));
+        agg.skeptics.sort_by(|a, b| a.score.cmp(&b.score));
+
         let (mean, spread) = if agg.scores.is_empty() {
             (50.0, 0)
         } else {
@@ -527,11 +577,8 @@ pub fn compute_field_cruxes(
             let sum: i32 = agg.scores.iter().sum();
             (sum as f32 / agg.scores.len() as f32, max - min)
         };
-        let stance_tension = if agg.active_count > 0 && agg.rejected_count > 0 {
-            25.0
-        } else {
-            0.0
-        };
+        let has_both_sides = !agg.supporters.is_empty() && !agg.skeptics.is_empty();
+        let stance_tension = if has_both_sides { 35.0 } else { 0.0 };
         let contested_score = spread as f32 + stance_tension + (agg.actors.len() as f32 * 4.0);
         let root_concept = resolver.concepts.get(&cid);
         out.push(FieldCruxSummary {
@@ -548,6 +595,8 @@ pub fn compute_field_cruxes(
             contested_score,
             distribution: agg.dist,
             tags: root_concept.map(|c| c.tags.clone()).unwrap_or_default(),
+            supporters: agg.supporters,
+            skeptics: agg.skeptics,
         });
     }
 

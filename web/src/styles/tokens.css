@@ -35,16 +35,23 @@
   --semantic-disagree-border: #E11D48;
   --semantic-disagree-text: #9F1239;
 
-  --actor-a-bg: #EEF2FF;
-  --actor-a-border: #4F46E5;
-  --actor-a-text: #3730A3;
+  --actor-a-bg: #F3E8FF;
+  --actor-a-border: #7C3AED;
+  --actor-a-text: #5B21B6;
 
-  --actor-b-bg: #F0FDFA;
-  --actor-b-border: #0D9488;
-  --actor-b-text: #115E59;
+  --actor-b-bg: #ECFDF5;
+  --actor-b-border: #059669;
+  --actor-b-text: #065F46;
 
   --radius-card: 12px;
   --radius-pill: 9999px;
+}
+
+/* Split purple + green border for nodes shared by both actors in Compare mode */
+.dual-owner-border {
+  background: linear-gradient(135deg, var(--actor-a-border) 0%, var(--actor-a-border) 48%, var(--actor-b-border) 52%, var(--actor-b-border) 100%);
+  padding: 2px;
+  border-radius: calc(var(--radius-card) + 2px);
 }
 
 * {

@@ -18,7 +18,7 @@ export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
   const navItems = [
     { to: '/', label: 'Explore', active: pathname === '/' },
     { to: '/compare', label: 'Compare', active: pathname.startsWith('/compare') },
-    { to: '/cruxes', label: 'Cruxes', active: pathname.startsWith('/cruxes') || pathname.startsWith('/concept') },
+    { to: '/cruxes', label: 'Disagreements', active: pathname.startsWith('/cruxes') || pathname.startsWith('/concept') },
   ];
 
   async function handleExportKey() {

@@ -501,10 +501,11 @@ async fn get_concept_spectrum(
 async fn list_field_cruxes(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<FieldCruxSummary>>, (StatusCode, String)> {
+    let actors = state.repo.list_actors().await.map_err(internal_err)?;
     let primary = state.repo.list_primary_snapshots().await.map_err(internal_err)?;
     let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
     let attestations = state.repo.list_attestations().await.map_err(internal_err)?;
-    Ok(Json(compute_field_cruxes(&primary, &concepts, &attestations)))
+    Ok(Json(compute_field_cruxes(&actors, &primary, &concepts, &attestations)))
 }
 
 async fn list_archetypes() -> Json<Vec<Archetype>> {
