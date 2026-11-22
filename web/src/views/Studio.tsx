@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   GitFork,
+  Link2,
   Plus,
   Sparkles,
   Target,
   Trash2,
+  X,
   Zap,
 } from 'lucide-react';
 import { api } from '../api/client';
@@ -43,6 +45,12 @@ const DEFAULT_CREDENCE: Credence = {
   numeric_rationale: null,
 };
 
+function defaultRelationForStage(stage: Stage): EdgeRelation {
+  if (stage === 'intervention') return 'mitigates';
+  if (stage === 'bet') return 'depends_on';
+  return 'leads_to';
+}
+
 export function Studio({ user, onOpenAuth }: StudioProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -56,9 +64,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
   const currentStage = STAGES[stageIdx];
 
   // Authoring mode
-  const [authoringMode, setAuthoringMode] = useState<'self' | 'community'>(
-    claimHandle ? 'self' : 'self'
-  );
+  const [authoringMode, setAuthoringMode] = useState<'self' | 'community'>('self');
 
   // Reference catalogs
   const [archetypes, setArchetypes] = useState<Archetype[]>([]);
@@ -82,6 +88,10 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
     },
   ]);
 
+  // Direct canvas selection states
+  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
   // Step 1 AI Paste Link / Text panel
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiUrl, setAiUrl] = useState('');
@@ -89,20 +99,19 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
 
-  // Step 2 active editor inputs
-  const [selectedCredence, setSelectedCredence] = useState<Credence>(DEFAULT_CREDENCE);
-  const [edgeRelation, setEdgeRelation] = useState<EdgeRelation>('leads_to');
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customTitle, setCustomTitle] = useState('');
-  const [customDesc, setCustomDesc] = useState('');
+  // Step 2 type-first combobox + credence state
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [draftTitle, setDraftTitle] = useState('');
   const [forkParentId, setForkParentId] = useState<string | null>(null);
-  const [citationUrl, setCitationUrl] = useState('');
+  const [selectedCredence, setSelectedCredence] = useState<Credence>(DEFAULT_CREDENCE);
+  const [nodeSourceDraft, setNodeSourceDraft] = useState('');
 
   // Step 5 publish fields
   const [actorHandle, setActorHandle] = useState(claimHandle ?? '');
   const [actorName, setActorName] = useState('');
   const [actorRole, setActorRole] = useState('');
   const [actorKind, setActorKind] = useState<'individual' | 'organization'>('individual');
+  const [communitySourceUrl, setCommunitySourceUrl] = useState('');
   const [changelogNote, setChangelogNote] = useState('');
   const [liveMatch, setLiveMatch] = useState<LiveMatchResponse | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -135,6 +144,8 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
           setEdges(res.primary_snapshot.edges);
           setCriteria(res.primary_snapshot.update_criteria);
           setStep(2);
+        } else if (claimMode === 'wipe') {
+          setStep(2);
         }
       });
     } else if (loadHandle) {
@@ -150,7 +161,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
     }
   }, [forkHandle, claimHandle, claimMode]);
 
-  // Fetch A/B/C contextual suggestions whenever stage or prior nodes change
+  // Fetch contextual suggestions whenever stage or prior nodes change
   const priorConceptIds = useMemo(() => nodes.map((n) => n.concept_id), [nodes]);
   useEffect(() => {
     api
@@ -176,6 +187,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
     setNodes(arch.nodes);
     setEdges(arch.edges);
     setCriteria(arch.update_criteria.length > 0 ? arch.update_criteria : criteria);
+    setEditingLocalId(null);
     setStep(2);
   }
 
@@ -191,6 +203,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       if (draft.update_criteria.length > 0) setCriteria(draft.update_criteria);
       setAiNotice(draft.note);
       setShowAiPanel(false);
+      setEditingLocalId(null);
       setStep(2);
     } catch (err) {
       setAiNotice(err instanceof Error ? err.message : 'Extraction failed');
@@ -200,7 +213,6 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
   }
 
   function addNodeForConcept(concept: Concept, stage: Stage) {
-    // Validate numeric rationale if numeric mode selected on Premise/Bottleneck/Intervention
     const needsCredence = stage === 'premise' || stage === 'bottleneck' || stage === 'intervention';
     if (
       needsCredence &&
@@ -221,12 +233,10 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       credence: needsCredence ? { ...selectedCredence } : null,
       bet_priority: stage === 'bet' ? 'primary' : null,
       note: null,
-      citations: citationUrl.trim()
-        ? [{ label: 'Source', url: citationUrl.trim(), quote: null }]
-        : [],
+      citations: [],
     };
 
-    // Auto-wire from active nodes in the previous stage
+    // Auto-wire cleanly from active nodes in the previous stage
     const prevStageIdx = STAGES.findIndex((s) => s.key === stage) - 1;
     const newEdges: SnapshotEdge[] = [];
     if (prevStageIdx >= 0) {
@@ -239,7 +249,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
           id: `e_${pn.local_id}_${localId}`,
           source_local_id: pn.local_id,
           target_local_id: localId,
-          relation: edgeRelation,
+          relation: defaultRelationForStage(stage),
           note: null,
         });
       }
@@ -247,33 +257,72 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
 
     setNodes((prev) => [...prev, newNode]);
     if (newEdges.length > 0) setEdges((prev) => [...prev, ...newEdges]);
-    setCitationUrl('');
   }
 
-  async function handleCreateCustomConcept(e: React.FormEvent) {
+  async function handleTypeFirstAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!customTitle.trim()) return;
+    const title = draftTitle.trim();
+    if (!title) return;
+
+    // If user typed an exact match to an existing concept in this stage and isn't forking, reuse it directly!
+    if (!forkParentId) {
+      const exactMatch = Object.values(conceptsMap).find(
+        (c) => c.stage === currentStage.key && c.title.toLowerCase() === title.toLowerCase()
+      );
+      if (exactMatch) {
+        addNodeForConcept(exactMatch, currentStage.key);
+        setDraftTitle('');
+        return;
+      }
+    }
+
     try {
       const created = await api.createConcept({
         stage: currentStage.key,
-        title: customTitle.trim(),
-        description: customDesc.trim(),
+        title,
+        description: '',
         parent_concept_id: forkParentId,
       });
       setConceptsMap((prev) => ({ ...prev, [created.id]: created }));
       addNodeForConcept(created, currentStage.key);
-      setCustomTitle('');
-      setCustomDesc('');
+      setDraftTitle('');
       setForkParentId(null);
-      setShowCustomForm(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create concept');
+      alert(err instanceof Error ? err.message : 'Failed to create node');
     }
+  }
+
+  function handleConnectNodes(sourceLocalId: string, targetLocalId: string) {
+    const exists = edges.some(
+      (e) => e.source_local_id === sourceLocalId && e.target_local_id === targetLocalId
+    );
+    if (exists) return;
+    const targetNode = nodes.find((n) => n.local_id === targetLocalId);
+    const rel = targetNode ? defaultRelationForStage(targetNode.stage) : 'leads_to';
+    const id = `e_${sourceLocalId}_${targetLocalId}_${Date.now().toString(36)}`;
+    setEdges((prev) => [
+      ...prev,
+      { id, source_local_id: sourceLocalId, target_local_id: targetLocalId, relation: rel, note: null },
+    ]);
+    setSelectedEdgeId(id);
+  }
+
+  function handleUpdateEdgeRelation(edgeId: string, relation: EdgeRelation | null) {
+    setEdges((prev) => prev.map((e) => (e.id === edgeId ? { ...e, relation } : e)));
+  }
+
+  function handleDeleteEdge(edgeId: string) {
+    setEdges((prev) => prev.filter((e) => e.id !== edgeId));
   }
 
   function removeNode(localId: string) {
     setNodes((prev) => prev.filter((n) => n.local_id !== localId));
     setEdges((prev) => prev.filter((e) => e.source_local_id !== localId && e.target_local_id !== localId));
+    if (editingLocalId === localId) setEditingLocalId(null);
+  }
+
+  function updateNode(localId: string, patch: Partial<SnapshotNode>) {
+    setNodes((prev) => prev.map((n) => (n.local_id === localId ? { ...n, ...patch } : n)));
   }
 
   function toggleCrux(localId: string) {
@@ -296,15 +345,27 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       is_load_bearing_crux: false,
       credence: { mode: 'qualitative', band: 'low', percent: null, percent_range: null, numeric_rationale: null },
       bet_priority: null,
-      note: 'Explicitly deprioritized / rejected compared to primary path.',
+      note: 'Not betting on this path.',
       citations: [],
     };
     setNodes((prev) => [...prev, newNode]);
   }
 
+  function jumpToAddInStage(stage: Stage) {
+    const idx = STAGES.findIndex((s) => s.key === stage);
+    if (idx >= 0) {
+      setStageIdx(idx);
+      setStep(2);
+      setEditingLocalId(null);
+      setTimeout(() => inputRef.current?.focus(), 40);
+    }
+  }
+
   const validCriteriaCount = criteria.filter(
     (u) => u.trigger.trim().length > 0 && u.pivot_action.trim().length > 0
   ).length;
+
+  const hasAnyCitation = nodes.some((n) => n.citations.some((c) => c.url.trim().length > 0));
 
   async function handlePublish() {
     setPublishError(null);
@@ -322,8 +383,28 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/^-|-$/g, '');
     if (cleanHandle.length < 2) {
-      setPublishError('Please provide a valid handle or display name.');
+      setPublishError('Please enter a name or handle.');
       return;
+    }
+
+    // Attach community-draft source URL onto first node if provided at Step 5
+    let finalNodes = nodes;
+    if (authoringMode === 'community' && !hasAnyCitation) {
+      if (!communitySourceUrl.trim()) {
+        setPublishError('Please link at least one public source (post, paper, or org page) for a community draft.');
+        return;
+      }
+      finalNodes = nodes.map((n, idx) =>
+        idx === 0
+          ? {
+              ...n,
+              citations: [
+                ...n.citations,
+                { label: 'Primary Source', url: communitySourceUrl.trim(), quote: null },
+              ],
+            }
+          : n
+      );
     }
 
     setPublishing(true);
@@ -331,7 +412,6 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       if (claimHandle) {
         await api.claimActor(claimHandle, user?.x_handle ?? undefined);
       } else {
-        // Create actor if it doesn't exist yet
         const exists = actors.some((a) => a.handle.toLowerCase() === cleanHandle);
         if (!exists) {
           await api.createActor({
@@ -347,7 +427,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       const finalSummary =
         summary.trim() ||
         `Theory of Change focusing on ${
-          conceptsMap[nodes.find((n) => n.stage === 'bet')?.concept_id ?? '']?.title ?? 'AI Safety'
+          conceptsMap[finalNodes.find((n) => n.stage === 'bet')?.concept_id ?? '']?.title ?? 'AI Safety'
         }.`;
 
       await api.publishSnapshot({
@@ -355,7 +435,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         authorship_mode: authoringMode === 'self' ? 'self_authored' : 'community_draft',
         summary: finalSummary,
         changelog_note: changelogNote.trim() || undefined,
-        nodes,
+        nodes: finalNodes,
         edges,
         update_criteria: criteria.filter((u) => u.trigger.trim() && u.pivot_action.trim()),
       });
@@ -368,9 +448,39 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
     }
   }
 
-  const stageActiveNodes = nodes.filter(
-    (n) => n.stage === currentStage.key && (n.stance === 'active' || n.stance === 'open_crux')
-  );
+  // Live-filtered suggestions based on what user types in the top box
+  const filteredSuggestions = useMemo(() => {
+    const q = draftTitle.trim().toLowerCase();
+    if (!q) return suggestions.slice(0, 4);
+    const matching = Object.values(conceptsMap)
+      .filter(
+        (c) =>
+          c.stage === currentStage.key &&
+          !priorConceptIds.includes(c.id) &&
+          (c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q))
+      )
+      .slice(0, 4)
+      .map((c) => ({
+        concept: c,
+        usage_count: c.usage_count ?? 0,
+        is_canonical: !c.parent_concept_id,
+        match_reason: '',
+      }));
+    return matching;
+  }, [draftTitle, suggestions, conceptsMap, currentStage.key, priorConceptIds]);
+
+  const editingNode = editingLocalId ? nodes.find((n) => n.local_id === editingLocalId) ?? null : null;
+  const editingNeedsCredence =
+    editingNode &&
+    (editingNode.stage === 'premise' ||
+      editingNode.stage === 'bottleneck' ||
+      editingNode.stage === 'intervention');
+
+  const stageNeedsCredence =
+    currentStage.key === 'premise' ||
+    currentStage.key === 'bottleneck' ||
+    currentStage.key === 'intervention';
+
   const siblingInterventions = Object.values(conceptsMap).filter(
     (c) =>
       c.stage === 'intervention' &&
@@ -380,15 +490,15 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
 
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6">
-      {/* Studio Stepper Header */}
+      {/* Clean Studio Stepper Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
               [1, '1. Start'],
-              [2, '2. Chain'],
+              [2, '2. Build Map'],
               [3, '3. Crux'],
-              [4, '4. Update Criterion*'],
+              [4, '4. Update Criterion'],
               [5, '5. Publish'],
             ] as [1 | 2 | 3 | 4 | 5, string][]
           ).map(([num, label]) => (
@@ -415,7 +525,9 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
               <button
                 onClick={() => setAuthoringMode('self')}
                 className={`rounded-md px-2.5 py-1 ${
-                  authoringMode === 'self' ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)]' : 'text-[var(--ink-muted)]'
+                  authoringMode === 'self'
+                    ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-2xs'
+                    : 'text-[var(--ink-muted)]'
                 }`}
               >
                 My ToC
@@ -423,10 +535,12 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
               <button
                 onClick={() => setAuthoringMode('community')}
                 className={`rounded-md px-2.5 py-1 ${
-                  authoringMode === 'community' ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)]' : 'text-[var(--ink-muted)]'
+                  authoringMode === 'community'
+                    ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-2xs'
+                    : 'text-[var(--ink-muted)]'
                 }`}
               >
-                Map Public Figure/Org
+                Map Someone Else
               </button>
             </div>
           )}
@@ -435,7 +549,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-            Paste Link (AI Draft)
+            Draft from Link / Notes
           </button>
         </div>
       </div>
@@ -448,7 +562,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[var(--ink-primary)]">
-              Draft from a LessWrong post, org About page, or paragraph
+              Draft from a LessWrong post, org page, or rough paragraph
             </h3>
             <button type="button" onClick={() => setShowAiPanel(false)} className="text-xs underline">
               Close
@@ -472,7 +586,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[11px] text-[var(--ink-secondary)]">
-              Maps directly onto existing canonical concepts so your graph stays immediately comparable.
+              We'll build a starting flowchart you can freely edit, rewire, and refine.
             </span>
             <button
               type="submit"
@@ -486,42 +600,88 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       )}
 
       {aiNotice && (
-        <div className="mb-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2 text-xs text-[var(--ink-secondary)]">
-          {aiNotice}
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2 text-xs text-[var(--ink-secondary)]">
+          <span>{aiNotice}</span>
+          <button onClick={() => setAiNotice(null)} className="text-[var(--ink-muted)] hover:text-[var(--ink-primary)]">
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
-      {/* STEP 1: ZERO-BLANK-CANVAS START RAMP */}
+      {/* STEP 1: INVITING START RAMP (Build Fresh First + Quick Templates Below) */}
       {step === 1 && (
-        <section className="space-y-6">
-          <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
-            <h1 className="font-editorial text-2xl font-semibold text-[var(--ink-primary)]">
-              Start from a lens, not a blank canvas.
+        <section className="mx-auto max-w-4xl space-y-5">
+          <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+            <h1 className="font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
+              Map your Theory of Change
             </h1>
-            <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-              Pick the closest AI Safety archetype or fork an existing public Theory of Change — then edit where you disagree.
+            <p className="mt-1.5 text-sm text-[var(--ink-secondary)]">
+              Start fresh in your own words, paste a link to draft from, or fork an existing archetype and edit where you disagree.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {archetypes.map((arch) => (
-                <button
-                  key={arch.id}
-                  onClick={() => loadArchetype(arch)}
-                  className="group rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-4 text-left transition hover:border-[var(--ink-primary)] hover:bg-[var(--bg-surface)]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[var(--ink-primary)]">{arch.name}</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-[var(--ink-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--ink-primary)]" />
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--ink-secondary)]">{arch.tagline}</p>
-                </button>
-              ))}
+            {/* Primary 2 fast paths */}
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => {
+                  setStep(2);
+                  setTimeout(() => inputRef.current?.focus(), 60);
+                }}
+                className="group flex flex-col justify-between rounded-2xl border-2 border-[var(--ink-primary)] bg-[var(--ink-primary)] p-5 text-left text-white transition hover:opacity-95"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-bold">Start fresh & write your own</span>
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-1.5 text-xs text-zinc-300">
+                  Type your own ideas stage by stage, pick from common community claims, or connect nodes directly on the canvas.
+                </p>
+              </button>
+
+              <button
+                onClick={() => setShowAiPanel(true)}
+                className="group flex flex-col justify-between rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-5 text-left transition hover:border-[var(--ink-primary)] hover:bg-[var(--bg-surface)]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-base font-bold text-[var(--ink-primary)]">
+                    <Sparkles className="h-4 w-4 text-amber-600" />
+                    Paste a link or rough notes
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-[var(--ink-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--ink-primary)]" />
+                </div>
+                <p className="mt-1.5 text-xs text-[var(--ink-secondary)]">
+                  Drop in a LessWrong post, org About page, or quick paragraph to auto-draft a starting map you can tweak.
+                </p>
+              </button>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-hairline)] pt-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-[var(--ink-secondary)]">Or fork an existing actor:</span>
-                {actors.slice(0, 4).map((a) => (
+            {/* Archetype templates */}
+            <div className="mt-7 border-t border-[var(--border-hairline)] pt-5">
+              <div className="text-xs font-semibold text-[var(--ink-secondary)]">
+                Or start from a template and edit where you disagree:
+              </div>
+              <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {archetypes.map((arch) => (
+                  <button
+                    key={arch.id}
+                    onClick={() => loadArchetype(arch)}
+                    className="group rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 text-left transition hover:border-[var(--ink-primary)] hover:bg-[var(--bg-surface)]"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[var(--ink-primary)]">{arch.name}</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--ink-muted)] group-hover:text-[var(--ink-primary)]" />
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[var(--ink-secondary)]">
+                      {arch.tagline}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {actors.length > 0 && (
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--border-hairline)] pt-4">
+                <span className="text-xs text-[var(--ink-muted)]">Or fork an existing map:</span>
+                {actors.slice(0, 5).map((a) => (
                   <button
                     key={a.id}
                     onClick={() => navigate(`/studio?fork=${encodeURIComponent(a.handle)}`)}
@@ -532,34 +692,174 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setStep(2)}
-                className="text-xs font-semibold text-[var(--ink-secondary)] underline hover:text-[var(--ink-primary)]"
-              >
-                Build step-by-step from scratch →
-              </button>
-            </div>
+            )}
           </div>
         </section>
       )}
 
-      {/* STEPS 2–5: SPLIT WORKSPACE (LEFT GUIDED PANEL + RIGHT LIVE CANVAS) */}
+      {/* STEPS 2–5: CLEAN SPLIT WORKSPACE */}
       {step >= 2 && (
-        <div className="grid gap-4 lg:grid-cols-[440px_1fr]">
-          {/* Left Guided Panel */}
+        <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
+          {/* Left Panel */}
           <section className="flex flex-col rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
-            {step === 2 && (
+            {/* STEP 2: EITHER DIRECT NODE EDITOR (when a canvas card is clicked) OR TYPE-FIRST ADDER */}
+            {step === 2 && editingNode && (
               <div className="flex flex-1 flex-col">
-                {/* Stage Sub-Tabs */}
+                <div className="flex items-center justify-between border-b border-[var(--border-hairline)] pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLocalId(null)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back to adding nodes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeNode(editingNode.local_id)}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <span className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+                    Editing {editingNode.stage}
+                  </span>
+                  <h2 className="mt-1 text-base font-bold leading-snug text-[var(--ink-primary)]">
+                    {conceptsMap[editingNode.concept_id]?.title ?? editingNode.concept_id}
+                  </h2>
+                </div>
+
+                {editingNeedsCredence && (
+                  <div className="mt-4">
+                    <CredencePicker
+                      value={editingNode.credence ?? DEFAULT_CREDENCE}
+                      onChange={(next) => updateNode(editingNode.local_id, { credence: next })}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2.5">
+                  <div>
+                    <div className="text-xs font-semibold text-[var(--ink-primary)]">Mark as Key Crux</div>
+                    <div className="text-[11px] text-[var(--ink-muted)]">
+                      If this belief flipped, my bet would change
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleCrux(editingNode.local_id)}
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      editingNode.is_load_bearing_crux
+                        ? 'bg-amber-500 text-white'
+                        : 'border border-[var(--border-hairline)] bg-white text-[var(--ink-secondary)]'
+                    }`}
+                  >
+                    <Zap className="h-3 w-3" />
+                    {editingNode.is_load_bearing_crux ? 'Crux' : 'Off'}
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                    Brief note (optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingNode.note ?? ''}
+                    onChange={(e) => updateNode(editingNode.local_id, { note: e.target.value || null })}
+                    placeholder="Add personal nuance or context…"
+                    className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs focus:border-[var(--ink-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                    Supporting links (optional)
+                  </label>
+                  {editingNode.citations.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {editingNode.citations.map((cit, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[11px]"
+                        >
+                          <Link2 className="h-3 w-3 text-[var(--ink-muted)]" />
+                          <span className="max-w-[160px] truncate">{cit.label}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateNode(editingNode.local_id, {
+                                citations: editingNode.citations.filter((_, idx) => idx !== i),
+                              })
+                            }
+                            className="text-[var(--ink-muted)] hover:text-rose-700"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="url"
+                      value={nodeSourceDraft}
+                      onChange={(e) => setNodeSourceDraft(e.target.value)}
+                      placeholder="https://lesswrong.com/... or paper link"
+                      className="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs focus:border-[var(--ink-primary)] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = nodeSourceDraft.trim();
+                        if (!url) return;
+                        let label = 'Source';
+                        try {
+                          label = new URL(url).hostname.replace('www.', '');
+                        } catch {
+                          // fallback
+                        }
+                        updateNode(editingNode.local_id, {
+                          citations: [...editingNode.citations, { label, url, quote: null }],
+                        });
+                        setNodeSourceDraft('');
+                      }}
+                      className="rounded-lg border border-[var(--border-hairline)] px-2.5 py-1.5 text-xs font-semibold hover:bg-[var(--bg-subtle)]"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-auto border-t border-[var(--border-hairline)] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLocalId(null)}
+                    className="w-full rounded-xl bg-[var(--ink-primary)] py-2 text-xs font-semibold text-white"
+                  >
+                    Done Editing Node
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && !editingNode && (
+              <div className="flex flex-1 flex-col">
+                {/* Clean 5-Stage Selector */}
                 <div className="mb-4 grid grid-cols-5 gap-1 rounded-xl bg-[var(--bg-subtle)] p-1">
                   {STAGES.map((s, i) => (
                     <button
                       key={s.key}
                       onClick={() => {
                         setStageIdx(i);
-                        setShowCustomForm(false);
+                        setDraftTitle('');
+                        setForkParentId(null);
                       }}
-                      className={`rounded-lg py-1 text-[10px] font-bold transition ${
+                      className={`rounded-lg py-1.5 text-[10px] font-bold transition ${
                         stageIdx === i
                           ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-xs'
                           : 'text-[var(--ink-muted)] hover:text-[var(--ink-primary)]'
@@ -570,172 +870,106 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                   ))}
                 </div>
 
-                <div className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-                  Stage {currentStage.num} of 5 · {currentStage.label}
-                </div>
-                <h2 className="mt-1 text-lg font-bold text-[var(--ink-primary)]">{currentStage.question}</h2>
-                <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Pick a canonical community concept below (instant comparability) or fork/write your own:
-                </p>
+                <h2 className="text-lg font-bold text-[var(--ink-primary)]">{currentStage.question}</h2>
 
-                {/* Already added in this stage */}
-                {stageActiveNodes.length > 0 && (
-                  <div className="mt-3 space-y-1.5">
-                    {stageActiveNodes.map((n) => (
-                      <div
-                        key={n.local_id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-[var(--semantic-agree-bg)] px-3 py-1.5 text-xs"
-                      >
-                        <span className="font-semibold text-[var(--semantic-agree-text)]">
-                          ✓ {conceptsMap[n.concept_id]?.title ?? n.concept_id}
-                        </span>
-                        <button
-                          onClick={() => removeNode(n.local_id)}
-                          className="text-rose-700 hover:opacity-75"
-                          title="Remove node"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Coding-agent inspired A / B / C / D choices */}
-                <div className="mt-3.5 space-y-2">
-                  {suggestions.slice(0, 3).map((sug, idx) => {
-                    const keycap = ['A', 'B', 'C'][idx];
-                    return (
-                      <div
-                        key={sug.concept.id}
-                        className="flex items-start gap-2.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 transition hover:border-[var(--actor-a-border)] hover:bg-[var(--actor-a-bg)]/30"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => addNodeForConcept(sug.concept, currentStage.key)}
-                          className="flex flex-1 items-start gap-2.5 text-left"
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--border-strong)] bg-[var(--bg-surface)] font-mono-meta text-xs font-bold text-[var(--ink-primary)]">
-                            {keycap}
-                          </span>
-                          <div>
-                            <div className="text-xs font-bold text-[var(--ink-primary)]">
-                              {sug.concept.title}
-                            </div>
-                            <div className="mt-0.5 text-[11px] text-[var(--ink-muted)]">
-                              {sug.match_reason}
-                            </div>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          title="Fork wording (keeps lineage to canonical root)"
-                          onClick={() => {
-                            setForkParentId(sug.concept.id);
-                            setCustomTitle(sug.concept.title);
-                            setCustomDesc(sug.concept.description);
-                            setShowCustomForm(true);
-                          }}
-                          className="rounded-md p-1 text-[var(--ink-muted)] hover:bg-[var(--bg-surface)] hover:text-[var(--ink-primary)]"
-                        >
-                          <GitFork className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-
-                  {/* Option D: Custom / Fork */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForkParentId(null);
-                      setShowCustomForm((o) => !o);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-[var(--border-strong)] p-3 text-left text-xs font-semibold text-[var(--ink-secondary)] hover:border-[var(--ink-primary)] hover:text-[var(--ink-primary)]"
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-dashed border-[var(--border-strong)] font-mono-meta text-xs">
-                      D
-                    </span>
-                    Other — Fork wording or write a custom node
-                  </button>
-                </div>
-
-                {showCustomForm && (
-                  <form
-                    onSubmit={handleCreateCustomConcept}
-                    className="mt-3 space-y-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3"
-                  >
-                    {forkParentId && (
-                      <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--actor-a-text)]">
+                {/* TYPE-FIRST PROMINENT INPUT BOX (front and center!) */}
+                <form onSubmit={handleTypeFirstAdd} className="mt-3">
+                  {forkParentId && (
+                    <div className="mb-1.5 flex items-center justify-between rounded-lg bg-[var(--actor-a-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--actor-a-text)]">
+                      <span className="inline-flex items-center gap-1">
                         <GitFork className="h-3 w-3" />
-                        Forking from "{conceptsMap[forkParentId]?.title}" (preserves graph comparability!)
-                      </div>
-                    )}
+                        Tweaking wording (linked to shared concept)
+                      </span>
+                      <button type="button" onClick={() => setForkParentId(null)}>
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
                     <input
+                      ref={inputRef}
                       type="text"
-                      required
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder="Concise claim or bet title (max 140 chars)"
-                      className="w-full rounded-lg border border-[var(--border-hairline)] bg-white px-2.5 py-1.5 text-xs"
-                    />
-                    <input
-                      type="text"
-                      value={customDesc}
-                      onChange={(e) => setCustomDesc(e.target.value)}
-                      placeholder="Optional clarification of what counts as true/false"
-                      className="w-full rounded-lg border border-[var(--border-hairline)] bg-white px-2.5 py-1.5 text-xs"
+                      value={draftTitle}
+                      onChange={(e) => setDraftTitle(e.target.value)}
+                      placeholder={`Write your own ${currentStage.label.toLowerCase()}…`}
+                      className="flex-1 rounded-xl border-2 border-[var(--border-strong)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-sm text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--ink-primary)] focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--ink-primary)] px-3 py-1.5 text-xs font-semibold text-white"
+                      disabled={!draftTitle.trim()}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-[var(--ink-primary)] px-4 py-2.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-35"
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add to {currentStage.label}
+                      <Plus className="h-4 w-4" />
+                      Add
                     </button>
-                  </form>
-                )}
+                  </div>
+                </form>
 
-                {/* Credence & Edge Type Controls */}
-                {(currentStage.key === 'premise' ||
-                  currentStage.key === 'bottleneck' ||
-                  currentStage.key === 'intervention') && (
-                  <div className="mt-4 border-t border-[var(--border-hairline)] pt-3.5">
+                {/* CREDENCE PICKER — Prominent right under the input! */}
+                {stageNeedsCredence && (
+                  <div className="mt-4">
                     <CredencePicker value={selectedCredence} onChange={setSelectedCredence} />
                   </div>
                 )}
 
-                {stageIdx > 0 && (
-                  <div className="mt-3 flex items-center justify-between text-xs">
-                    <span className="text-[var(--ink-secondary)]">Incoming arrow type (optional):</span>
-                    <select
-                      value={edgeRelation}
-                      onChange={(e) => setEdgeRelation(e.target.value as EdgeRelation)}
-                      className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2 py-1 font-mono-meta text-[11px]"
-                    >
-                      <option value="leads_to">leads to</option>
-                      <option value="mitigates">mitigates</option>
-                      <option value="depends_on">depends on</option>
-                      <option value="conflicts_with">conflicts with</option>
-                    </select>
+                {/* CLEAN COMMUNITY SUGGESTIONS BELOW */}
+                <div className="mt-5 border-t border-[var(--border-hairline)] pt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[var(--ink-secondary)]">
+                      {draftTitle.trim()
+                        ? 'Matching existing concepts'
+                        : `Or pick a common ${currentStage.label.toLowerCase()}`}
+                    </span>
+                    <span className="text-[11px] text-[var(--ink-muted)]">Click to add</span>
                   </div>
-                )}
 
-                {authoringMode === 'community' && (
-                  <div className="mt-3">
-                    <label className="mb-1 block text-[11px] font-semibold text-amber-800">
-                      Source Citation URL (required for community drafts)
-                    </label>
-                    <input
-                      type="url"
-                      value={citationUrl}
-                      onChange={(e) => setCitationUrl(e.target.value)}
-                      placeholder="https://lesswrong.com/... or https://arxiv.org/..."
-                      className="w-full rounded-lg border border-amber-300 bg-amber-50/40 px-2.5 py-1.5 text-xs"
-                    />
-                  </div>
-                )}
+                  {filteredSuggestions.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-[var(--border-hairline)] px-3 py-2.5 text-xs text-[var(--ink-muted)]">
+                      No exact matches — hit <strong>Add</strong> above to create yours.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {filteredSuggestions.slice(0, 4).map((sug) => (
+                        <div
+                          key={sug.concept.id}
+                          className="group flex items-center justify-between gap-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2.5 transition hover:border-[var(--ink-primary)] hover:bg-[var(--bg-surface)]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addNodeForConcept(sug.concept, currentStage.key);
+                              setDraftTitle('');
+                            }}
+                            className="flex-1 text-left"
+                          >
+                            <div className="text-xs font-semibold text-[var(--ink-primary)]">
+                              {sug.concept.title}
+                            </div>
+                            {sug.usage_count > 0 && (
+                              <div className="mt-0.5 font-mono-meta text-[10px] text-[var(--ink-muted)]">
+                                Used by {sug.usage_count} {sug.usage_count === 1 ? 'map' : 'maps'}
+                              </div>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            title="Tweak wording in the box above (keeps comparability)"
+                            onClick={() => {
+                              setForkParentId(sug.concept.id);
+                              setDraftTitle(sug.concept.title);
+                              inputRef.current?.focus();
+                            }}
+                            className="rounded-md p-1.5 text-[var(--ink-muted)] opacity-60 hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)] hover:opacity-100"
+                          >
+                            <GitFork className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
+                {/* Navigation Footer */}
                 <div className="mt-auto flex items-center justify-between border-t border-[var(--border-hairline)] pt-4">
                   <button
                     onClick={() => (stageIdx > 0 ? setStageIdx(stageIdx - 1) : setStep(1))}
@@ -748,24 +982,21 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                     onClick={() => (stageIdx < 4 ? setStageIdx(stageIdx + 1) : setStep(3))}
                     className="inline-flex items-center gap-1 rounded-lg bg-[var(--ink-primary)] px-4 py-1.5 text-xs font-semibold text-white"
                   >
-                    {stageIdx < 4 ? `Next: ${STAGES[stageIdx + 1].label}` : 'Next: Crux & Non-Bets'}
+                    {stageIdx < 4 ? `Next: ${STAGES[stageIdx + 1].label}` : 'Next: Pick Your Crux'}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 3: PIN CRUX & EXPLICITLY REJECTED PATHS */}
+            {/* STEP 3: PIN CRUX & REJECTED PATHS */}
             {step === 3 && (
               <div className="flex flex-1 flex-col">
-                <div className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-                  Step 3 · High-Signal Diffs
-                </div>
-                <h2 className="mt-1 text-lg font-bold text-[var(--ink-primary)]">
-                  Pin your load-bearing crux
+                <h2 className="text-lg font-bold text-[var(--ink-primary)]">
+                  Which belief matters most?
                 </h2>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Click the 1–2 nodes where a belief shift would collapse or redirect your Bet:
+                  Click the 1–2 nodes where changing your mind would change your bet:
                 </p>
 
                 <div className="mt-3 space-y-1.5">
@@ -793,10 +1024,10 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
 
                 <div className="mt-5 border-t border-[var(--border-hairline)] pt-4">
                   <h3 className="text-xs font-bold text-[var(--ink-primary)]">
-                    Why NOT these alternative paths? (Optional 1-click)
+                    Anything you're skeptical of? (Optional)
                   </h3>
                   <p className="mt-0.5 text-[11px] text-[var(--ink-secondary)]">
-                    Marking paths you actively reject unlocks sharp disagreements in Compare mode.
+                    Helps show clear disagreements when people compare against your map.
                   </p>
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {siblingInterventions.slice(0, 5).map((c) => {
@@ -811,7 +1042,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                               : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--ink-secondary)] hover:border-rose-300'
                           }`}
                         >
-                          {isRej ? '✕ ' : '+ Reject: '}
+                          {isRej ? '✕ ' : '+ Skeptical: '}
                           {c.title}
                         </button>
                       );
@@ -841,13 +1072,13 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
               <div className="flex flex-1 flex-col">
                 <div className="flex items-center gap-1.5 font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-amber-800">
                   <Target className="h-3.5 w-3.5" />
-                  Step 4 · Required to Publish
+                  Required to Publish
                 </div>
                 <h2 className="mt-1 text-lg font-bold text-[var(--ink-primary)]">
                   What would change your mind?
                 </h2>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Every published Theory of Change on toc.open commits to at least one observable pivot trigger.
+                  Commit to at least one concrete observation that would shift your belief or bet.
                 </p>
 
                 <div className="mt-4 space-y-3 overflow-y-auto">
@@ -881,7 +1112,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                         }
                         className="w-full rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs"
                       >
-                        <option value="">Target: Overall Theory of Change</option>
+                        <option value="">Applies to: Overall Theory of Change</option>
                         {nodes.map((n) => (
                           <option key={n.local_id} value={n.local_id}>
                             Tests: {conceptsMap[n.concept_id]?.title ?? n.concept_id}
@@ -891,7 +1122,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
 
                       <div>
                         <label className="mb-1 block text-[11px] font-bold text-[var(--ink-primary)]">
-                          IF (observable signal)
+                          If this happens…
                         </label>
                         <textarea
                           rows={2}
@@ -908,7 +1139,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
 
                       <div>
                         <label className="mb-1 block text-[11px] font-bold text-[var(--ink-primary)]">
-                          THEN (how my belief or Bet shifts)
+                          Then I'll change my mind / bet by…
                         </label>
                         <textarea
                           rows={2}
@@ -957,7 +1188,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                     className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add another update criterion
+                    Add another criterion
                   </button>
                 </div>
 
@@ -979,24 +1210,20 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
               </div>
             )}
 
-            {/* STEP 5: FIELD COMPARISON PAYOFF & PUBLISH */}
+            {/* STEP 5: PUBLISH */}
             {step === 5 && (
               <div className="flex flex-1 flex-col">
-                <div className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-                  Step 5 · Ready to Publish
-                </div>
-                <h2 className="mt-1 text-lg font-bold text-[var(--ink-primary)]">
-                  {claimHandle ? `Publish Claimed Profile (@${claimHandle})` : 'Publish to the Open Graph'}
+                <h2 className="text-lg font-bold text-[var(--ink-primary)]">
+                  {claimHandle ? `Publish Claimed Map (@${claimHandle})` : 'Publish Your Map'}
                 </h2>
 
                 {liveMatch?.closest_actor_name && (
                   <div className="mt-3 rounded-xl border border-emerald-200 bg-[var(--semantic-agree-bg)] p-3 text-xs text-[var(--semantic-agree-text)]">
-                    <strong>Field Match Preview:</strong> Closest premise overlap with{' '}
-                    <strong>{liveMatch.closest_actor_name}</strong> ({liveMatch.overlap_pct}%)
+                    <strong>Closest match:</strong> {liveMatch.closest_actor_name} ({liveMatch.overlap_pct}% shared premises)
                     {liveMatch.sharpest_divergence_crux && (
                       <>
                         {' '}
-                        · sharpest divergence vs <strong>{liveMatch.sharpest_divergence_actor}</strong> on{' '}
+                        · biggest difference vs <strong>{liveMatch.sharpest_divergence_actor}</strong> on{' '}
                         <em>"{liveMatch.sharpest_divergence_crux}"</em>.
                       </>
                     )}
@@ -1006,7 +1233,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                 <div className="mt-4 space-y-2.5">
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
-                      1-Line TL;DR Summary
+                      1-sentence summary
                     </label>
                     <textarea
                       rows={2}
@@ -1075,15 +1302,30 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                     </>
                   )}
 
+                  {authoringMode === 'community' && !hasAnyCitation && (
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-amber-900">
+                        Backing source link (required when mapping someone else)
+                      </label>
+                      <input
+                        type="url"
+                        value={communitySourceUrl}
+                        onChange={(e) => setCommunitySourceUrl(e.target.value)}
+                        placeholder="https://lesswrong.com/... or org website"
+                        className="w-full rounded-lg border border-amber-300 bg-amber-50/40 px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
-                      Changelog Note (optional)
+                      Version note (optional)
                     </label>
                     <input
                       type="text"
                       value={changelogNote}
                       onChange={(e) => setChangelogNote(e.target.value)}
-                      placeholder="Initial Theory of Change snapshot"
+                      placeholder="Initial Theory of Change"
                       className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
                     />
                   </div>
@@ -1119,23 +1361,35 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
             )}
           </section>
 
-          {/* Right Panel: Live Assembling 5-Column Flowchart */}
+          {/* Right Panel: Interactive Direct-Manipulation 5-Column Flowchart */}
           <div className="relative">
             <SwimlaneCanvas
               mode="single"
+              editable={true}
+              activeStage={step === 2 ? currentStage.key : undefined}
               nodes={nodes}
               edges={edges}
               updateCriteria={criteria}
               concepts={conceptsMap}
+              selectedLocalId={editingLocalId}
+              selectedEdgeId={selectedEdgeId}
+              onSelectNode={(lid) => {
+                setEditingLocalId(lid);
+                setStep(2);
+              }}
+              onAddInStage={jumpToAddInStage}
+              onConnectNodes={handleConnectNodes}
+              onSelectEdge={setSelectedEdgeId}
+              onUpdateEdgeRelation={handleUpdateEdgeRelation}
+              onDeleteEdge={handleDeleteEdge}
               heightClass="h-[640px]"
             />
 
-            {liveMatch?.closest_actor_name && (
-              <div className="pointer-events-none absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/95 px-3.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur">
+            {liveMatch?.closest_actor_name && liveMatch.overlap_pct > 0 && !selectedEdgeId && (
+              <div className="pointer-events-none absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/95 px-3.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span>
-                  Live Match · <strong>{liveMatch.overlap_pct}%</strong> premise overlap with{' '}
-                  <strong>{liveMatch.closest_actor_name}</strong>
+                  Closest match: <strong>{liveMatch.closest_actor_name}</strong> ({liveMatch.overlap_pct}%)
                 </span>
               </div>
             )}

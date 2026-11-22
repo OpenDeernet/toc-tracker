@@ -14,6 +14,7 @@ export interface SingleNodeData {
   citationsCount: number;
   selected?: boolean;
   dimmed?: boolean;
+  editable?: boolean;
   [key: string]: unknown;
 }
 
@@ -35,10 +36,27 @@ export interface CompareNodeData {
   [key: string]: unknown;
 }
 
-export type TocNodeData = SingleNodeData | CompareNodeData;
+export interface PlaceholderNodeData {
+  kind: 'placeholder';
+  stageLabel: string;
+  [key: string]: unknown;
+}
+
+export type TocNodeData = SingleNodeData | CompareNodeData | PlaceholderNodeData;
 
 export function TocNodeCard({ data }: NodeProps) {
   const d = data as TocNodeData;
+
+  if (d.kind === 'placeholder') {
+    return (
+      <div className="flex h-[108px] w-[220px] cursor-pointer flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)]/55 px-4 text-center transition hover:border-[var(--ink-primary)] hover:bg-[var(--bg-surface)]">
+        <span className="text-base font-medium text-[var(--ink-muted)]">+</span>
+        <span className="mt-0.5 text-xs font-semibold text-[var(--ink-secondary)]">
+          Add {d.stageLabel}
+        </span>
+      </div>
+    );
+  }
 
   if (d.kind === 'compare') {
     const isDisagree = d.category === 'direct_crux_disagreement';
@@ -115,14 +133,18 @@ export function TocNodeCard({ data }: NodeProps) {
       ? 'border-amber-400/90'
       : 'border-[var(--border-hairline)] hover:border-[var(--border-strong)]';
 
+  const handleClass = d.editable
+    ? '!h-3 !w-3 !border-2 !border-white !bg-[var(--ink-primary)] transition hover:!scale-125'
+    : '!h-2 !w-2 !border-0 !bg-[var(--border-strong)]';
+
   return (
     <div
       className={`w-[220px] cursor-pointer rounded-[var(--radius-card)] border bg-[var(--bg-surface)] px-3.5 py-3 shadow-xs transition ${borderStyle} ${
         d.dimmed ? 'opacity-30' : 'opacity-100'
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-[var(--border-strong)]" />
+      <Handle type="target" position={Position.Left} className={handleClass} />
+      <Handle type="source" position={Position.Right} className={handleClass} />
 
       <div className="text-[13px] font-semibold leading-snug text-[var(--ink-primary)]">
         {d.title}
