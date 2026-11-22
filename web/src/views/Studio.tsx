@@ -35,6 +35,7 @@ import {
 } from '../types';
 import { CredencePicker } from '../components/CredencePicker';
 import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
+import { CreateFromDocsPanel } from '../components/CreateFromDocsPanel';
 
 interface StudioProps {
   user: PublicUser | null;
@@ -99,11 +100,8 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  // Step 1 AI Paste Link / Text panel
+  // Step 1 AI Create from Documents panel
   const [showAiPanel, setShowAiPanel] = useState(false);
-  const [aiUrl, setAiUrl] = useState('');
-  const [aiText, setAiText] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
 
   // Step 2 type-first combobox + credence state
@@ -223,27 +221,6 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
     setCriteria(arch.update_criteria.length > 0 ? arch.update_criteria : criteria);
     setEditingLocalId(null);
     setStep(2);
-  }
-
-  async function handleAiExtract(e: React.FormEvent) {
-    e.preventDefault();
-    setAiLoading(true);
-    setAiNotice(null);
-    try {
-      const draft = await api.studioExtract({ text: aiText, url: aiUrl });
-      setSummary(draft.summary);
-      setNodes(draft.nodes);
-      setEdges(draft.edges);
-      if (draft.update_criteria.length > 0) setCriteria(draft.update_criteria);
-      setAiNotice(draft.note);
-      setShowAiPanel(false);
-      setEditingLocalId(null);
-      setStep(2);
-    } catch (err) {
-      setAiNotice(err instanceof Error ? err.message : 'Extraction failed');
-    } finally {
-      setAiLoading(false);
-    }
   }
 
   function addNodeForConcept(concept: Concept, stage: Stage) {
@@ -668,49 +645,31 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         </div>
       )}
 
-      {/* Optional AI Paste Link / Text Drawer */}
+      {/* Multi-Document Quote-Locked Extraction Panel */}
       {showAiPanel && (
-        <form
-          onSubmit={handleAiExtract}
-          className="mb-4 rounded-2xl border border-amber-300 bg-[var(--semantic-crux-bg)] p-4"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[var(--ink-primary)]">
-              Draft from a LessWrong post, org page, or rough paragraph
-            </h3>
-            <button type="button" onClick={() => setShowAiPanel(false)} className="text-xs underline">
-              Close
-            </button>
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <input
-              type="url"
-              value={aiUrl}
-              onChange={(e) => setAiUrl(e.target.value)}
-              placeholder="Optional URL (e.g. https://lesswrong.com/posts/...)"
-              className="rounded-lg border border-[var(--border-hairline)] bg-white px-3 py-2 text-xs"
-            />
-            <input
-              type="text"
-              value={aiText}
-              onChange={(e) => setAiText(e.target.value)}
-              placeholder="Or paste 2–4 sentences explaining your Theory of Change…"
-              className="rounded-lg border border-[var(--border-hairline)] bg-white px-3 py-2 text-xs"
-            />
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[11px] text-[var(--ink-secondary)]">
-              Generates an editable starting graph.
-            </span>
-            <button
-              type="submit"
-              disabled={aiLoading}
-              className="rounded-lg bg-[var(--ink-primary)] px-4 py-1.5 text-xs font-semibold text-white"
-            >
-              {aiLoading ? 'Drafting…' : 'Generate Draft →'}
-            </button>
-          </div>
-        </form>
+        <CreateFromDocsPanel
+          conceptsMap={conceptsMap}
+          onConceptsCreated={(created) => {
+            setConceptsMap((prev) => {
+              const next = { ...prev };
+              for (const c of created) next[c.id] = c;
+              return next;
+            });
+          }}
+          onApplyDraft={(payload) => {
+            setSummary(payload.summary);
+            if (payload.actorNameHint && !actorName) setActorName(payload.actorNameHint);
+            if (payload.actorRoleHint && !actorRole) setActorRole(payload.actorRoleHint);
+            setNodes(payload.nodes);
+            setEdges(payload.edges);
+            if (payload.updateCriteria.length > 0) setCriteria(payload.updateCriteria);
+            setAiNotice(payload.notice);
+            setShowAiPanel(false);
+            setEditingLocalId(null);
+            setStep(2);
+          }}
+          onClose={() => setShowAiPanel(false)}
+        />
       )}
 
       {aiNotice && (

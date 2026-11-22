@@ -49,6 +49,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/snapshots", post(publish_snapshot))
         .route("/attestations", get(list_attestations).post(create_attestation))
         // Studio Assist & Silent Graph Linter
+        .route("/studio/ai-status", get(studio_ai_status))
         .route("/studio/suggest", post(studio_suggest))
         .route("/studio/extract", post(studio_extract))
         .route("/studio/live-match", post(studio_live_match))
@@ -783,8 +784,14 @@ async fn studio_suggest(
     )))
 }
 
+async fn studio_ai_status() -> Json<ai::AiStatusInfo> {
+    Json(ai::ai_status())
+}
+
 #[derive(Deserialize)]
 struct StudioExtractRequest {
+    #[serde(default)]
+    documents: Vec<ai::SourceDocumentInput>,
     text: Option<String>,
     url: Option<String>,
 }
@@ -794,12 +801,15 @@ async fn studio_extract(
     Json(req): Json<StudioExtractRequest>,
 ) -> Result<Json<ai::ExtractedDraft>, (StatusCode, String)> {
     let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
-    let draft = ai::extract_draft(
-        req.text.as_deref().unwrap_or(""),
-        req.url.as_deref(),
-        &concepts,
-    )
-    .await;
+    let mut docs = req.documents;
+    if docs.is_empty() && (req.text.is_some() || req.url.is_some()) {
+        docs.push(ai::SourceDocumentInput {
+            url: req.url,
+            title: None,
+            text: req.text,
+        });
+    }
+    let draft = ai::extract_draft_from_documents(&docs, &concepts).await;
     Ok(Json(draft))
 }
 

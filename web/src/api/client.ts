@@ -2,6 +2,7 @@ import type {
   Actor,
   ActorCard,
   ActorDetailResponse,
+  AiStatusInfo,
   Archetype,
   CompareResponse,
   Concept,
@@ -16,6 +17,7 @@ import type {
   SimilarConceptMatch,
   SnapshotEdge,
   SnapshotNode,
+  SourceDocumentInput,
   Stage,
   StudioSuggestion,
   ToCSnapshot,
@@ -141,7 +143,11 @@ export const api = {
     });
   },
 
-  studioExtract(body: { text?: string; url?: string }) {
+  studioAiStatus() {
+    return apiFetch<AiStatusInfo>('/api/v1/studio/ai-status');
+  },
+
+  studioExtract(body: { documents?: SourceDocumentInput[]; text?: string; url?: string }) {
     return apiFetch<ExtractedDraft>('/api/v1/studio/extract', {
       method: 'POST',
       body: JSON.stringify(body),

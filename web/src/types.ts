@@ -310,13 +310,39 @@ export interface StudioSuggestion {
   match_reason: string;
 }
 
+export interface SourceDocumentInput {
+  url?: string;
+  title?: string;
+  text?: string;
+}
+
+export interface ProposedConcept {
+  temp_id: string;
+  stage: Stage;
+  title: string;
+  description: string;
+  parent_concept_id?: string | null;
+}
+
 export interface ExtractedDraft {
+  actor_name_hint?: string | null;
+  actor_role_hint?: string | null;
   summary: string;
   nodes: SnapshotNode[];
   edges: SnapshotEdge[];
   update_criteria: UpdateCriterion[];
+  proposed_concepts: ProposedConcept[];
   used_llm: boolean;
+  provider: string;
+  model: string;
+  docs_processed: number;
   note: string;
+}
+
+export interface AiStatusInfo {
+  llm_enabled: boolean;
+  provider: string;
+  model: string;
 }
 
 export interface PublicUser {
