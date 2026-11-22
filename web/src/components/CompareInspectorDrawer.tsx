@@ -23,6 +23,7 @@ interface CompareInspectorDrawerProps {
 function ActorPositionBlock({
   actor,
   node,
+  phrasingOverride,
   criteria,
   colorVar,
   bgVar,
@@ -30,6 +31,7 @@ function ActorPositionBlock({
 }: {
   actor: Actor;
   node?: SnapshotNode | null;
+  phrasingOverride?: string | null;
   criteria: UpdateCriterion[];
   colorVar: string;
   bgVar: string;
@@ -74,6 +76,13 @@ function ActorPositionBlock({
           <span className="shrink-0 whitespace-nowrap text-[11px] italic text-[var(--ink-muted)]">Not in their map</span>
         )}
       </div>
+
+      {phrasingOverride && (
+        <p className="mt-2 rounded-lg border border-dashed border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] text-[var(--ink-secondary)]">
+          <span className="font-mono-meta text-[9px] uppercase text-[var(--ink-muted)]">Their phrasing: </span>
+          "{phrasingOverride}"
+        </p>
+      )}
 
       {node?.credence?.numeric_rationale && (
         <div className="mt-2.5 rounded-lg bg-[var(--bg-subtle)] p-2.5 text-[11px] leading-relaxed text-[var(--ink-secondary)]">
@@ -182,6 +191,11 @@ export function CompareInspectorDrawer({
         <ActorPositionBlock
           actor={actorA}
           node={diffNode.node_a}
+          phrasingOverride={
+            diffNode.concept_a_title && diffNode.concept_a_title !== diffNode.canonical_title
+              ? diffNode.concept_a_title
+              : null
+          }
           criteria={criteriaA}
           colorVar="var(--actor-a-border)"
           bgVar="var(--actor-a-bg)"
@@ -190,6 +204,11 @@ export function CompareInspectorDrawer({
         <ActorPositionBlock
           actor={actorB}
           node={diffNode.node_b}
+          phrasingOverride={
+            diffNode.concept_b_title && diffNode.concept_b_title !== diffNode.canonical_title
+              ? diffNode.concept_b_title
+              : null
+          }
           criteria={criteriaB}
           colorVar="var(--actor-b-border)"
           bgVar="var(--actor-b-bg)"

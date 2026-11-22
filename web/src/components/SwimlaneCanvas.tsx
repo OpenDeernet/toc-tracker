@@ -418,8 +418,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
 
           {isEditable && (
             <div className="flex items-center justify-between border-b border-[var(--border-hairline)]/60 px-4 py-1.5 text-[11px] text-[var(--ink-muted)]">
-              <span>Click any card to edit credence · Click any arrow to label or remove</span>
-              <span>Drag dark dots to connect cards</span>
+              <span>Click node or arrow to edit</span>
+              <span>Drag handles to connect</span>
             </div>
           )}
 

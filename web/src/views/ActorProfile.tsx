@@ -5,6 +5,7 @@ import {
   ExternalLink,
   GitCompare,
   GitFork,
+  Pencil,
   ShieldCheck,
   Target,
   UserCheck,
@@ -15,6 +16,7 @@ import {
   STAGES,
   credencePill,
   type ActorDetailResponse,
+  type CriterionStatus,
   type PublicUser,
   type ToCSnapshot,
 } from '../types';
@@ -36,9 +38,10 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
   const [tab, setTab] = useState<ProfileTab>('flowchart');
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [updatingCriterionId, setUpdatingCriterionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function loadActor() {
     setError(null);
     api
       .getActor(handle)
@@ -46,12 +49,28 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
         setData(res);
         const snap = res.primary_snapshot ?? res.snapshots[0] ?? null;
         setActiveVersion(snap?.version ?? null);
-        // Auto-select the first load-bearing crux for instant clarity
         const firstCrux = snap?.nodes.find((n) => n.is_load_bearing_crux && n.stance === 'active');
         setSelectedLocalId(firstCrux?.local_id ?? null);
       })
       .catch((e) => setError(e.message));
+  }
+
+  useEffect(() => {
+    loadActor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handle]);
+
+  async function handleStatusChange(criterionId: string, status: CriterionStatus) {
+    setUpdatingCriterionId(criterionId);
+    try {
+      await api.updateCriterionStatus(handle, criterionId, status);
+      loadActor();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Update failed');
+    } finally {
+      setUpdatingCriterionId(null);
+    }
+  }
 
   if (error) {
     return (
@@ -88,6 +107,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
     snapshot?.nodes.filter((n) => n.stance === 'rejected' || n.stance === 'deprioritized') ?? [];
 
   const isUnclaimed = actor.authorship_status === 'community_draft';
+  const isOwner = Boolean(user && actor.owner_user_id === user.id);
 
   function handleClaimChoice(mode: 'augment' | 'wipe') {
     setClaimModalOpen(false);
@@ -106,14 +126,14 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
           <div className="flex items-center gap-2 text-[var(--semantic-crux-text)]">
             <UserCheck className="h-4 w-4 shrink-0" />
             <span>
-              <strong>Community-Mapped · Unclaimed.</strong> Are you <strong>{actor.display_name}</strong>? Claim this Theory of Change to verify authorship, edit where it's off, or start fresh.
+              <strong>Community draft.</strong> Are you <strong>{actor.display_name}</strong>? Claim to verify or edit.
             </span>
           </div>
           <button
             onClick={() => setClaimModalOpen(true)}
             className="rounded-lg bg-[var(--ink-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
           >
-            Claim & Refine
+            Claim
           </button>
         </div>
       )}
@@ -151,6 +171,15 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {isOwner && (
+              <Link
+                to={`/studio?edit=${encodeURIComponent(actor.handle)}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit Map
+              </Link>
+            )}
             <Link
               to={`/compare?a=${encodeURIComponent(actor.handle)}&b=${actor.handle === 'redwood-research' ? 'alice-chen' : 'redwood-research'}`}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
@@ -247,11 +276,11 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                   heightClass="h-[520px]"
                 />
 
-                {/* Explicitly Rejected Paths Rail */}
+                {/* Rejected Paths Rail */}
                 {rejectedNodes.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-3">
                     <span className="text-xs font-semibold text-[var(--ink-secondary)]">
-                      Explicitly Rejected Paths ({rejectedNodes.length})
+                      Rejected paths ({rejectedNodes.length})
                     </span>
                     {rejectedNodes.map((rn) => {
                       const c = concepts[rn.concept_id];
@@ -394,9 +423,35 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                             {uc.timeframe}
                           </span>
                         )}
-                        <span className="rounded-full bg-[var(--semantic-crux-bg)] px-2.5 py-0.5 font-mono-meta text-[11px] font-semibold text-[var(--semantic-crux-text)]">
-                          {uc.status.replace('_', ' ')}
-                        </span>
+                        {isOwner ? (
+                          <div className="inline-flex rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-[10px] font-semibold">
+                            {(
+                              [
+                                ['watching', 'Watching'],
+                                ['partially_met', 'Partial'],
+                                ['triggered', 'Triggered'],
+                                ['retired', 'Retired'],
+                              ] as [CriterionStatus, string][]
+                            ).map(([st, lbl]) => (
+                              <button
+                                key={st}
+                                disabled={updatingCriterionId === uc.id}
+                                onClick={() => handleStatusChange(uc.id, st)}
+                                className={`rounded-md px-2 py-0.5 transition ${
+                                  uc.status === st
+                                    ? 'bg-[var(--ink-primary)] text-white'
+                                    : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]'
+                                }`}
+                              >
+                                {lbl}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="rounded-full bg-[var(--semantic-crux-bg)] px-2.5 py-0.5 font-mono-meta text-[11px] font-semibold text-[var(--semantic-crux-text)]">
+                            {uc.status.replace('_', ' ')}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -503,10 +558,10 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-4 text-left transition hover:border-[var(--ink-primary)]"
               >
                 <div className="text-sm font-bold text-[var(--ink-primary)]">
-                  Augment & refine the existing map (Recommended)
+                  Edit draft
                 </div>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Pre-loads the community-mapped flowchart into the Studio so you can tweak credences, fix phrasing, and publish in ~2 minutes.
+                  Adjust credences and wording directly.
                 </p>
               </button>
               <button
@@ -514,10 +569,10 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 text-left transition hover:border-[var(--ink-primary)]"
               >
                 <div className="text-sm font-bold text-[var(--ink-primary)]">
-                  Wipe & start fresh
+                  Start blank
                 </div>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Discard the community draft and build your Theory of Change from scratch (or from a link/archetype).
+                  Discard draft and start from scratch.
                 </p>
               </button>
             </div>

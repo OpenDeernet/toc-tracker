@@ -6,10 +6,14 @@ import type {
   CompareResponse,
   Concept,
   ConceptSpectrum,
+  CriterionStatus,
+  EpistemicCheckItem,
   ExtractedDraft,
   FieldCruxSummary,
   LiveMatchResponse,
+  OwnedActorLink,
   PublicUser,
+  SimilarConceptMatch,
   SnapshotEdge,
   SnapshotNode,
   Stage,
@@ -151,8 +155,36 @@ export const api = {
     });
   },
 
+  studioCheck(nodes: SnapshotNode[], edges: SnapshotEdge[], update_criteria: UpdateCriterion[]) {
+    return apiFetch<EpistemicCheckItem[]>('/api/v1/studio/check', {
+      method: 'POST',
+      body: JSON.stringify({ nodes, edges, update_criteria }),
+    });
+  },
+
+  studioSimilar(stage: Stage, title: string) {
+    return apiFetch<SimilarConceptMatch[]>('/api/v1/studio/similar', {
+      method: 'POST',
+      body: JSON.stringify({ stage, title }),
+    });
+  },
+
+  updateCriterionStatus(handle: string, criterionId: string, status: CriterionStatus, note?: string) {
+    return apiFetch<ToCSnapshot>(
+      `/api/v1/actors/${encodeURIComponent(handle)}/criteria/${encodeURIComponent(criterionId)}/status`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ status, note }),
+      }
+    );
+  },
+
   getMe() {
-    return apiFetch<{ authenticated: boolean; user?: PublicUser | null }>('/api/v1/me');
+    return apiFetch<{
+      authenticated: boolean;
+      user?: PublicUser | null;
+      owned_actors: OwnedActorLink[];
+    }>('/api/v1/me');
   },
 
   authProviders() {

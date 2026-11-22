@@ -67,13 +67,13 @@ export function ExploreHome() {
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6">
       {/* Clean Editorial Hero */}
-      <section className="flex flex-col justify-between gap-6 border-b border-[var(--border-hairline)] pb-8 lg:flex-row lg:items-end">
+      <section className="flex flex-col justify-between gap-6 border-b border-[var(--border-hairline)] pb-7 lg:flex-row lg:items-end">
         <div className="max-w-2xl">
-          <h1 className="font-editorial text-3xl font-semibold tracking-tight text-[var(--ink-primary)] sm:text-[42px] sm:leading-[1.12]">
-            See why AI Safety researchers do what they do — and where they disagree.
+          <h1 className="font-editorial text-3xl font-semibold tracking-tight text-[var(--ink-primary)] sm:text-[42px] sm:leading-[1.1]">
+            What AI Safety actors bet on, and where they split.
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--ink-secondary)] sm:text-[15px]">
-            Compare Theories of Change side-by-side: what people think happens by default, what they're betting on, and what evidence would change their mind.
+          <p className="mt-2.5 text-sm text-[var(--ink-secondary)] sm:text-[15px]">
+            Premises, bets, and falsifiable update criteria — side by side.
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export function ExploreHome() {
             to="/studio"
             className="inline-flex items-center gap-2 rounded-xl bg-[var(--ink-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Map Your Theory of Change
+            New Map
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
@@ -90,7 +90,7 @@ export function ExploreHome() {
             className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-primary)] transition hover:bg-[var(--bg-subtle)]"
           >
             <GitCompare className="h-4 w-4" />
-            Compare Two ToCs
+            Compare
           </Link>
         </div>
       </section>
@@ -160,15 +160,10 @@ export function ExploreHome() {
 
       {/* People & Organizations (Elevated with distinct personal color accents) */}
       <section className="mt-12">
-        <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-[var(--ink-primary)]">
-              People & Organizations
-            </h2>
-            <p className="text-xs text-[var(--ink-secondary)]">
-              Click any profile to read their reasoning & update criteria, or pick any two to compare side-by-side.
-            </p>
-          </div>
+        <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--ink-primary)]">
+            People & Organizations
+          </h2>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
@@ -294,17 +289,12 @@ export function ExploreHome() {
         )}
       </section>
 
-      {/* Where People Disagree Most (Plain-English, real people on each side) */}
+      {/* Active Disagreements */}
       <section className="mt-14 pb-16">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-[var(--ink-primary)]">
-              Where People Disagree Most
-            </h2>
-            <p className="text-xs text-[var(--ink-secondary)]">
-              Claims where mapped people and organizations take opposite sides.
-            </p>
-          </div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--ink-primary)]">
+            Active Disagreements
+          </h2>
           <Link to="/cruxes" className="text-xs font-semibold text-[var(--ink-primary)] hover:underline">
             All disagreements →
           </Link>
@@ -332,7 +322,7 @@ export function ExploreHome() {
 
                   <div className="mt-4 space-y-2.5">
                     <div>
-                      <div className="text-[11px] font-semibold text-emerald-800">Thinks likely / Betting on it</div>
+                      <div className="text-[11px] font-semibold text-emerald-800">Bullish / Betting</div>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {item.supporters.length > 0 ? (
                           item.supporters.map((s) => (
@@ -352,7 +342,7 @@ export function ExploreHome() {
                     </div>
 
                     <div>
-                      <div className="text-[11px] font-semibold text-rose-800">Skeptical / Not betting on it</div>
+                      <div className="text-[11px] font-semibold text-rose-800">Skeptical / Rejected</div>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {item.skeptics.length > 0 ? (
                           item.skeptics.map((s) => (

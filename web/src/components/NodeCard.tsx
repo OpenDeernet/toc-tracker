@@ -112,7 +112,7 @@ export function TocNodeCard({ data }: NodeProps) {
           <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[var(--ink-muted)]">
             <Target className="h-3 w-3 text-amber-600" />
             <span>
-              {d.criteriaCount} update {d.criteriaCount === 1 ? 'criterion' : 'criteria'} · click to view
+              {d.criteriaCount} update {d.criteriaCount === 1 ? 'criterion' : 'criteria'}
             </span>
           </div>
         )}

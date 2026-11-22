@@ -56,7 +56,7 @@ export function ConceptExplorer() {
 
       <header className="mt-4 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
         <div className="font-mono-meta text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-          {data.root_concept.stage} · Canonical Root Concept
+          {data.root_concept.stage} · Root Claim
         </div>
         <h1 className="mt-1.5 font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
           {data.root_concept.title}
@@ -71,11 +71,8 @@ export function ConceptExplorer() {
       {/* 5-Band Credence Spectrum */}
       <section className="mt-6 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
         <h2 className="text-sm font-bold text-[var(--ink-primary)]">
-          Credence Spectrum Across Actors ({data.positions.length})
+          Credence Spectrum ({data.positions.length})
         </h2>
-        <p className="mt-0.5 text-xs text-[var(--ink-secondary)]">
-          Includes direct references and forked phrasing variations mapped to this root concept.
-        </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-5">
           {CREDENCE_BANDS.map((band) => {
@@ -131,7 +128,7 @@ export function ConceptExplorer() {
           <div className="flex items-center gap-2">
             <GitFork className="h-4 w-4 text-[var(--ink-muted)]" />
             <h2 className="text-sm font-bold text-[var(--ink-primary)]">
-              Nuanced Phrasing Forks ({data.forks.length})
+              Phrasing Variants ({data.forks.length})
             </h2>
           </div>
           <div className="mt-3 space-y-2">
@@ -150,7 +147,7 @@ export function ConceptExplorer() {
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-amber-700" />
           <h2 className="text-sm font-bold text-[var(--ink-primary)]">
-            Community Update Criteria Watching This Crux ({allCriteria.length})
+            Update Criteria ({allCriteria.length})
           </h2>
         </div>
         {allCriteria.length === 0 ? (

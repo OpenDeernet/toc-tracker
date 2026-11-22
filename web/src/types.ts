@@ -335,3 +335,22 @@ export interface LiveMatchResponse {
   sharpest_divergence_actor?: string | null;
   sharpest_divergence_crux?: string | null;
 }
+
+export interface OwnedActorLink {
+  handle: string;
+  display_name: string;
+}
+
+export interface EpistemicCheckItem {
+  code: string;
+  severity: 'warning' | 'insight' | 'tip';
+  title: string;
+  detail: string;
+  target_local_id?: string | null;
+  suggested_concept_id?: string | null;
+}
+
+export interface SimilarConceptMatch {
+  concept: Concept;
+  similarity: number;
+}

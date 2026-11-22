@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { api } from './api/client';
-import type { PublicUser } from './types';
+import type { OwnedActorLink, PublicUser } from './types';
 import { TopNav } from './components/TopNav';
 import { AuthModal } from './components/AuthModal';
 import { ExploreHome } from './views/ExploreHome';
@@ -13,24 +13,38 @@ import { Studio } from './views/Studio';
 
 export function App() {
   const [user, setUser] = useState<PublicUser | null>(null);
+  const [ownedActors, setOwnedActors] = useState<OwnedActorLink[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshMe = useCallback(() => {
     api
       .getMe()
-      .then((res) => setUser(res.user ?? null))
+      .then((res) => {
+        setUser(res.user ?? null);
+        setOwnedActors(res.owned_actors ?? []);
+      })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refreshMe();
+  }, [refreshMe]);
 
   async function handleLogout() {
     await api.logout().catch(() => {});
     setUser(null);
+    setOwnedActors([]);
   }
 
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
-        <TopNav user={user} onOpenAuth={() => setAuthOpen(true)} onLogout={handleLogout} />
+        <TopNav
+          user={user}
+          ownedActors={ownedActors}
+          onOpenAuth={() => setAuthOpen(true)}
+          onLogout={handleLogout}
+        />
         <Routes>
           <Route path="/" element={<ExploreHome />} />
           <Route
@@ -42,10 +56,23 @@ export function App() {
           <Route path="/concept/:rootId" element={<ConceptExplorer />} />
           <Route
             path="/studio"
-            element={<Studio user={user} onOpenAuth={() => setAuthOpen(true)} />}
+            element={
+              <Studio
+                user={user}
+                onOpenAuth={() => setAuthOpen(true)}
+                onPublished={refreshMe}
+              />
+            }
           />
         </Routes>
-        <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSuccess={setUser} />
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          onSuccess={(u) => {
+            setUser(u);
+            refreshMe();
+          }}
+        />
       </div>
     </BrowserRouter>
   );

@@ -43,13 +43,13 @@ export function CredencePicker({ value, onChange }: CredencePickerProps) {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--ink-primary)]">Your Credence</span>
+        <span className="text-xs font-semibold text-[var(--ink-primary)]">Credence</span>
         <button
           type="button"
           onClick={toggleNumeric}
           className="text-xs font-medium text-[var(--actor-a-border)] hover:underline"
         >
-          {isNumeric ? 'Switch to qualitative bands' : 'Use exact % (requires rationale)'}
+          {isNumeric ? 'Qualitative bands' : 'Exact %'}
         </button>
       </div>
 

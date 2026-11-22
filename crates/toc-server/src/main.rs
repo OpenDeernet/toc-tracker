@@ -102,6 +102,7 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState {
         repo,
         storage,
+        oauth_states: auth::OAuthStateStore::default(),
         web_dist_dir,
         public_base_url,
     });

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
   GitFork,
+  Lightbulb,
   Link2,
   Plus,
   Sparkles,
@@ -21,8 +23,10 @@ import {
   type Concept,
   type Credence,
   type EdgeRelation,
+  type EpistemicCheckItem,
   type LiveMatchResponse,
   type PublicUser,
+  type SimilarConceptMatch,
   type SnapshotEdge,
   type SnapshotNode,
   type Stage,
@@ -35,6 +39,7 @@ import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
 interface StudioProps {
   user: PublicUser | null;
   onOpenAuth: () => void;
+  onPublished?: () => void;
 }
 
 const DEFAULT_CREDENCE: Credence = {
@@ -51,13 +56,15 @@ function defaultRelationForStage(stage: Stage): EdgeRelation {
   return 'leads_to';
 }
 
-export function Studio({ user, onOpenAuth }: StudioProps) {
+export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const forkHandle = searchParams.get('fork');
+  const editHandle = searchParams.get('edit');
   const claimHandle = searchParams.get('claim');
   const claimMode = searchParams.get('mode'); // 'augment' | 'wipe'
+  const targetExistingHandle = claimHandle || editHandle;
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [stageIdx, setStageIdx] = useState(0);
@@ -107,15 +114,27 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
   const [nodeSourceDraft, setNodeSourceDraft] = useState('');
 
   // Step 5 publish fields
-  const [actorHandle, setActorHandle] = useState(claimHandle ?? '');
+  const [actorHandle, setActorHandle] = useState(targetExistingHandle ?? '');
   const [actorName, setActorName] = useState('');
   const [actorRole, setActorRole] = useState('');
   const [actorKind, setActorKind] = useState<'individual' | 'organization'>('individual');
   const [communitySourceUrl, setCommunitySourceUrl] = useState('');
   const [changelogNote, setChangelogNote] = useState('');
   const [liveMatch, setLiveMatch] = useState<LiveMatchResponse | null>(null);
+  const [lintChecks, setLintChecks] = useState<EpistemicCheckItem[]>([]);
+  const [showLinter, setShowLinter] = useState(false);
+  const [similarMatches, setSimilarMatches] = useState<SimilarConceptMatch[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+
+  // Escape exits direct node editor
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && editingLocalId) setEditingLocalId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editingLocalId]);
 
   // Load initial catalogs + handle ?fork or ?claim
   useEffect(() => {
@@ -131,9 +150,9 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
   }, []);
 
   useEffect(() => {
-    const loadHandle = forkHandle || (claimHandle && claimMode !== 'wipe' ? claimHandle : null);
-    if (claimHandle) {
-      api.getActor(claimHandle).then((res) => {
+    const loadHandle = forkHandle || (targetExistingHandle && claimMode !== 'wipe' ? targetExistingHandle : null);
+    if (targetExistingHandle) {
+      api.getActor(targetExistingHandle).then((res) => {
         setActorHandle(res.actor.handle);
         setActorName(res.actor.display_name);
         setActorRole(res.actor.role_or_affiliation);
@@ -159,7 +178,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         }
       });
     }
-  }, [forkHandle, claimHandle, claimMode]);
+  }, [forkHandle, targetExistingHandle, claimMode]);
 
   // Fetch contextual suggestions whenever stage or prior nodes change
   const priorConceptIds = useMemo(() => nodes.map((n) => n.concept_id), [nodes]);
@@ -170,17 +189,32 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
       .catch(() => {});
   }, [currentStage.key, priorConceptIds]);
 
-  // Live overlap match preview as user builds their graph
+  // Live overlap match + silent epistemic graph linter
   useEffect(() => {
     if (nodes.length === 0) {
       setLiveMatch(null);
+      setLintChecks([]);
       return;
     }
     const timer = setTimeout(() => {
       api.studioLiveMatch(nodes, edges).then(setLiveMatch).catch(() => {});
+      api.studioCheck(nodes, edges, criteria).then(setLintChecks).catch(() => {});
     }, 350);
     return () => clearTimeout(timer);
-  }, [nodes, edges]);
+  }, [nodes, edges, criteria]);
+
+  // Near-duplicate fork nudge while typing custom node
+  useEffect(() => {
+    const trimmed = draftTitle.trim();
+    if (trimmed.length < 8 || forkParentId) {
+      setSimilarMatches([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api.studioSimilar(currentStage.key, trimmed).then(setSimilarMatches).catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [draftTitle, currentStage.key, forkParentId]);
 
   function loadArchetype(arch: Archetype) {
     setSummary(arch.summary);
@@ -431,7 +465,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         }.`;
 
       await api.publishSnapshot({
-        actor_handle: claimHandle ?? cleanHandle,
+        actor_handle: targetExistingHandle ?? cleanHandle,
         authorship_mode: authoringMode === 'self' ? 'self_authored' : 'community_draft',
         summary: finalSummary,
         changelog_note: changelogNote.trim() || undefined,
@@ -440,7 +474,8 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         update_criteria: criteria.filter((u) => u.trigger.trim() && u.pivot_action.trim()),
       });
 
-      navigate(`/a/${encodeURIComponent(claimHandle ?? cleanHandle)}`);
+      onPublished?.();
+      navigate(`/a/${encodeURIComponent(targetExistingHandle ?? cleanHandle)}`);
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : 'Publish failed');
     } finally {
@@ -520,7 +555,21 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {!claimHandle && (
+          {lintChecks.length > 0 && step >= 2 && (
+            <button
+              type="button"
+              onClick={() => setShowLinter((o) => !o)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                showLinter
+                  ? 'border-amber-500 bg-amber-100 text-amber-950'
+                  : 'border-amber-300 bg-[var(--semantic-crux-bg)] text-amber-900 hover:bg-amber-100'
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
+              {lintChecks.length} {lintChecks.length === 1 ? 'check' : 'checks'}
+            </button>
+          )}
+          {!targetExistingHandle && (
             <div className="inline-flex rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-[11px] font-semibold">
               <button
                 onClick={() => setAuthoringMode('self')}
@@ -549,10 +598,75 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-            Draft from Link / Notes
+            Draft from URL / Text
           </button>
         </div>
       </div>
+
+      {/* Silent Epistemic Graph Linter Tray (Opt-in, Dismissible) */}
+      {showLinter && lintChecks.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-amber-300/90 bg-[var(--bg-surface)] p-4">
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="font-mono-meta text-[11px] font-bold uppercase tracking-wider text-amber-900">
+              Epistemic Stress-Test ({lintChecks.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowLinter(false)}
+              className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+            >
+              Hide
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {lintChecks.map((item) => (
+              <div
+                key={item.code + item.title}
+                className="flex items-start justify-between gap-2.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 text-xs"
+              >
+                <div className="flex items-start gap-2">
+                  {item.severity === 'warning' ? (
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                  ) : (
+                    <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                  )}
+                  <div>
+                    <div className="font-semibold text-[var(--ink-primary)]">{item.title}</div>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--ink-secondary)]">
+                      {item.detail}
+                    </p>
+                  </div>
+                </div>
+                {item.target_local_id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.code === 'unfalsifiable_crux' || item.code === 'vague_criterion') {
+                        setStep(4);
+                      } else {
+                        setEditingLocalId(item.target_local_id ?? null);
+                        setStep(2);
+                      }
+                    }}
+                    className="shrink-0 rounded-md border border-[var(--border-hairline)] bg-white px-2 py-1 text-[10px] font-semibold hover:bg-[var(--bg-subtle)]"
+                  >
+                    Fix
+                  </button>
+                )}
+                {item.suggested_concept_id && conceptsMap[item.suggested_concept_id] && (
+                  <button
+                    type="button"
+                    onClick={() => toggleRejectedConcept(conceptsMap[item.suggested_concept_id!])}
+                    className="shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-800 hover:bg-rose-100"
+                  >
+                    Mark skeptical
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Optional AI Paste Link / Text Drawer */}
       {showAiPanel && (
@@ -586,7 +700,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[11px] text-[var(--ink-secondary)]">
-              We'll build a starting flowchart you can freely edit, rewire, and refine.
+              Generates an editable starting graph.
             </span>
             <button
               type="submit"
@@ -608,16 +722,13 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
         </div>
       )}
 
-      {/* STEP 1: INVITING START RAMP (Build Fresh First + Quick Templates Below) */}
+      {/* STEP 1: INVITING START RAMP */}
       {step === 1 && (
         <section className="mx-auto max-w-4xl space-y-5">
           <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
             <h1 className="font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
-              Map your Theory of Change
+              New Theory of Change
             </h1>
-            <p className="mt-1.5 text-sm text-[var(--ink-secondary)]">
-              Start fresh in your own words, paste a link to draft from, or fork an existing archetype and edit where you disagree.
-            </p>
 
             {/* Primary 2 fast paths */}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -629,11 +740,11 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                 className="group flex flex-col justify-between rounded-2xl border-2 border-[var(--ink-primary)] bg-[var(--ink-primary)] p-5 text-left text-white transition hover:opacity-95"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-bold">Start fresh & write your own</span>
+                  <span className="text-base font-bold">Blank canvas</span>
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </div>
                 <p className="mt-1.5 text-xs text-zinc-300">
-                  Type your own ideas stage by stage, pick from common community claims, or connect nodes directly on the canvas.
+                  Write your own nodes, pull common claims, and connect edges directly.
                 </p>
               </button>
 
@@ -644,12 +755,12 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                 <div className="flex items-center justify-between">
                   <span className="inline-flex items-center gap-1.5 text-base font-bold text-[var(--ink-primary)]">
                     <Sparkles className="h-4 w-4 text-amber-600" />
-                    Paste a link or rough notes
+                    Draft from URL or text
                   </span>
                   <ArrowRight className="h-4 w-4 text-[var(--ink-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--ink-primary)]" />
                 </div>
                 <p className="mt-1.5 text-xs text-[var(--ink-secondary)]">
-                  Drop in a LessWrong post, org About page, or quick paragraph to auto-draft a starting map you can tweak.
+                  Paste a LessWrong post, org page, or rough paragraph to generate a starting map.
                 </p>
               </button>
             </div>
@@ -903,6 +1014,22 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                       Add
                     </button>
                   </div>
+
+                  {/* Subtle Near-Duplicate Fork Nudge */}
+                  {similarMatches.length > 0 && !forkParentId && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-[var(--actor-a-bg)]/50 px-2.5 py-1.5 text-[11px] text-[var(--actor-a-text)]">
+                      <span className="truncate">
+                        Similar to <strong>"{similarMatches[0].concept.title}"</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setForkParentId(similarMatches[0].concept.id)}
+                        className="shrink-0 font-semibold underline"
+                      >
+                        Link as fork
+                      </button>
+                    </div>
+                  )}
                 </form>
 
                 {/* CREDENCE PICKER — Prominent right under the input! */}
@@ -1078,7 +1205,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                   What would change your mind?
                 </h2>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  Commit to at least one concrete observation that would shift your belief or bet.
+                  One falsifiable trigger that would shift your bet.
                 </p>
 
                 <div className="mt-4 space-y-3 overflow-y-auto">
@@ -1214,7 +1341,11 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
             {step === 5 && (
               <div className="flex flex-1 flex-col">
                 <h2 className="text-lg font-bold text-[var(--ink-primary)]">
-                  {claimHandle ? `Publish Claimed Map (@${claimHandle})` : 'Publish Your Map'}
+                  {claimHandle
+                    ? `Publish Claimed Map (@${claimHandle})`
+                    : editHandle
+                      ? `Update Map (@${editHandle})`
+                      : 'Publish'}
                 </h2>
 
                 {liveMatch?.closest_actor_name && (
@@ -1239,12 +1370,12 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                       rows={2}
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
-                      placeholder="Why I do what I do in one crisp sentence."
+                      placeholder="One-sentence thesis."
                       className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
                     />
                   </div>
 
-                  {!claimHandle && (
+                  {!targetExistingHandle && (
                     <>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -1354,7 +1485,7 @@ export function Studio({ user, onOpenAuth }: StudioProps) {
                       ? 'Publishing…'
                       : authoringMode === 'self' && !user
                         ? 'Sign in & Publish'
-                        : 'Publish Open Snapshot'}
+                        : 'Publish'}
                   </button>
                 </div>
               </div>

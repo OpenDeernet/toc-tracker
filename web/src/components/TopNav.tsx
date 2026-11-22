@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { KeyRound, LogOut, Plus, User } from 'lucide-react';
-import type { PublicUser } from '../types';
+import { KeyRound, LogOut, Map, Plus, User } from 'lucide-react';
+import type { OwnedActorLink, PublicUser } from '../types';
 import { api } from '../api/client';
 
 interface TopNavProps {
   user: PublicUser | null;
+  ownedActors: OwnedActorLink[];
   onOpenAuth: () => void;
   onLogout: () => void;
 }
 
-export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
+export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps) {
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
@@ -73,9 +74,26 @@ export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
                     <div className="border-b border-[var(--border-hairline)] px-2.5 py-2">
                       <div className="text-xs font-semibold text-[var(--ink-primary)]">{user.display_name}</div>
                       <div className="truncate font-mono-meta text-[10px] text-[var(--ink-muted)]">
-                        pub: {user.arweave_pubkey.slice(0, 18)}…
+                        {user.x_handle ?? user.github_handle ?? `pub: ${user.arweave_pubkey.slice(0, 14)}…`}
                       </div>
                     </div>
+
+                    {ownedActors.length > 0 && (
+                      <div className="border-b border-[var(--border-hairline)] py-1">
+                        {ownedActors.map((a) => (
+                          <Link
+                            key={a.handle}
+                            to={`/a/${a.handle}`}
+                            onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                          >
+                            <Map className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
+                            <span className="truncate">{a.display_name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+
                     <button
                       onClick={() => {
                         setMenuOpen(false);
@@ -84,7 +102,7 @@ export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
                       className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
                     >
                       <KeyRound className="h-3.5 w-3.5" />
-                      Export Open-Data Keypair
+                      Export Signing Key
                     </button>
                     <button
                       onClick={() => {
@@ -113,7 +131,7 @@ export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
               className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
             >
               <Plus className="h-3.5 w-3.5" />
-              Map Your ToC
+              New Map
             </Link>
           </div>
         </div>
@@ -122,9 +140,9 @@ export function TopNav({ user, onOpenAuth, onLogout }: TopNavProps) {
       {exportedKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
           <div className="w-full max-w-lg rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Your Open-Data Signing Keypair</h3>
+            <h3 className="text-base font-semibold">Ed25519 Signing Key</h3>
             <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-              toc.open provisions an Ed25519 identity automatically so you own your Arweave records without touching crypto wallets. Store this backup safely.
+              Your Ed25519 key for Arweave snapshots. Back it up.
             </p>
             <pre className="mt-3 max-h-60 overflow-auto rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3 font-mono-meta text-[11px] text-[var(--ink-primary)]">
               {exportedKey}

@@ -24,6 +24,7 @@ use crate::repo::Repository;
 pub struct AppState {
     pub repo: Arc<dyn Repository>,
     pub storage: Arc<dyn StorageAdapter>,
+    pub oauth_states: auth::OAuthStateStore,
     pub web_dist_dir: PathBuf,
     pub public_base_url: String,
 }
@@ -39,6 +40,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/actors/{handle}/snapshots/{version}", get(get_actor_snapshot_version))
         .route("/actors/{handle}/export", get(export_actor))
         .route("/actors/{handle}/claim", post(claim_actor))
+        .route("/actors/{handle}/criteria/{criterion_id}/status", post(update_criterion_status))
         .route("/compare", get(compare_actors))
         .route("/concepts", get(list_concepts).post(create_concept))
         .route("/concepts/{root_id}", get(get_concept_spectrum))
@@ -46,10 +48,12 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/archetypes", get(list_archetypes))
         .route("/snapshots", post(publish_snapshot))
         .route("/attestations", get(list_attestations).post(create_attestation))
-        // Studio Assist
+        // Studio Assist & Silent Graph Linter
         .route("/studio/suggest", post(studio_suggest))
         .route("/studio/extract", post(studio_extract))
         .route("/studio/live-match", post(studio_live_match))
+        .route("/studio/check", post(studio_check))
+        .route("/studio/similar", post(studio_similar))
         // Auth
         .route("/auth/providers", get(auth::auth_providers))
         .route("/auth/dev-login", post(auth::dev_email_login))
@@ -60,9 +64,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .nest("/api/v1", api)
         .route("/auth/x/start", get(auth::x_oauth_start))
-        .route("/auth/x/callback", get(auth::oauth_callback_placeholder))
+        .route("/auth/x/callback", get(auth::x_oauth_callback))
         .route("/auth/github/start", get(auth::github_oauth_start))
-        .route("/auth/github/callback", get(auth::oauth_callback_placeholder))
+        .route("/auth/github/callback", get(auth::github_oauth_callback))
         // Dynamic OG PNG cards
         .route("/og/actor/{handle}", get(og_actor_png))
         .route("/og/compare", get(og_compare_png))
@@ -868,6 +872,106 @@ async fn studio_live_match(
     }))
 }
 
+#[derive(Deserialize)]
+struct UpdateCriterionStatusRequest {
+    status: CriterionStatus,
+    note: Option<String>,
+}
+
+async fn update_criterion_status(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path((handle, criterion_id)): Path<(String, String)>,
+    Json(req): Json<UpdateCriterionStatusRequest>,
+) -> Result<Json<ToCSnapshot>, (StatusCode, String)> {
+    let user = auth::current_user(&state, &headers)
+        .await
+        .ok_or((StatusCode::UNAUTHORIZED, "Sign in to update your criteria.".into()))?;
+    let actor = state
+        .repo
+        .get_actor_by_handle(handle.trim_start_matches('@'))
+        .await
+        .map_err(internal_err)?
+        .ok_or((StatusCode::NOT_FOUND, "Actor not found".into()))?;
+
+    if actor.owner_user_id.as_deref() != Some(user.id.as_str()) {
+        return Err((StatusCode::FORBIDDEN, "Only the verified owner can update this profile's criteria.".into()));
+    }
+
+    let snaps = state
+        .repo
+        .list_snapshots_for_actor(&actor.id)
+        .await
+        .map_err(internal_err)?;
+    let latest = snaps
+        .first()
+        .ok_or((StatusCode::NOT_FOUND, "No snapshot found".into()))?;
+
+    let mut next = latest.clone();
+    next.id = format!("snp_{}", uuid::Uuid::new_v4().simple());
+    next.version = latest.version + 1;
+    next.previous_snapshot_id = Some(latest.id.clone());
+    next.published_at = Utc::now();
+    next.arweave_tx_id = None;
+
+    let mut matched_trigger = None;
+    for uc in &mut next.update_criteria {
+        if uc.id == criterion_id {
+            uc.status = req.status;
+            matched_trigger = Some(uc.trigger.clone());
+            break;
+        }
+    }
+    let Some(trig) = matched_trigger else {
+        return Err((StatusCode::NOT_FOUND, "Update criterion not found".into()));
+    };
+
+    next.changelog_note = Some(match req.note.filter(|s| !s.trim().is_empty()) {
+        Some(n) => format!("Criterion → {}: {n}", req.status.label()),
+        None => format!("Marked criterion \"{trig}\" as {}", req.status.label()),
+    });
+
+    let saved = state.repo.publish_snapshot(next).await.map_err(internal_err)?;
+    Ok(Json(saved))
+}
+
+#[derive(Deserialize)]
+struct StudioCheckRequest {
+    nodes: Vec<SnapshotNode>,
+    edges: Vec<SnapshotEdge>,
+    update_criteria: Vec<UpdateCriterion>,
+}
+
+async fn studio_check(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<StudioCheckRequest>,
+) -> Result<Json<Vec<EpistemicCheckItem>>, (StatusCode, String)> {
+    let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
+    let primary = state.repo.list_primary_snapshots().await.map_err(internal_err)?;
+    let items = run_epistemic_checks(
+        &req.nodes,
+        &req.edges,
+        &req.update_criteria,
+        &concepts,
+        &primary,
+    );
+    Ok(Json(items))
+}
+
+#[derive(Deserialize)]
+struct StudioSimilarRequest {
+    stage: Stage,
+    title: String,
+}
+
+async fn studio_similar(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<StudioSimilarRequest>,
+) -> Result<Json<Vec<SimilarConceptMatch>>, (StatusCode, String)> {
+    let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
+    Ok(Json(find_similar_concepts(req.stage, &req.title, &concepts)))
+}
+
 // ============================================================================
 // Dynamic OG PNG & Meta-Injected SPA HTML
 // ============================================================================
@@ -1013,6 +1117,7 @@ mod tests {
         Arc::new(AppState {
             repo,
             storage: Arc::new(LocalMockAdapter),
+            oauth_states: auth::OAuthStateStore::default(),
             web_dist_dir: PathBuf::from("web/dist"),
             public_base_url: "http://localhost:3001".into(),
         })
@@ -1133,6 +1238,7 @@ mod tests {
             "update_criteria": []
         });
         let res = app
+            .clone()
             .oneshot(
                 Request::builder()
                     .method("POST")
@@ -1144,5 +1250,26 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // 6. Silent Graph Linter (/api/v1/studio/check) + Similar Concept Nudge (/api/v1/studio/similar)
+        let sim_payload = serde_json::json!({
+            "stage": "bottleneck",
+            "title": "Behavioral evals fail to detect scheming"
+        });
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/studio/similar")
+                    .header("content-type", "application/json")
+                    .body(Body::from(sim_payload.to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let sim_body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(res.into_body(), 1024 * 1024).await.unwrap()).unwrap();
+        assert_eq!(sim_body[0]["concept"]["id"], "cpt_evals_miss_scheming");
     }
 }

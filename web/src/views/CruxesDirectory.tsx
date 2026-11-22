@@ -27,15 +27,10 @@ export function CruxesDirectory() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <div className="flex flex-col justify-between gap-4 border-b border-[var(--border-hairline)] pb-6 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
-            Key Disagreements
-          </h1>
-          <p className="mt-1 text-sm text-[var(--ink-secondary)]">
-            See who is on each side of the biggest open questions in AI Safety.
-          </p>
-        </div>
+      <div className="flex flex-col justify-between gap-4 border-b border-[var(--border-hairline)] pb-5 sm:flex-row sm:items-center">
+        <h1 className="font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
+          Key Disagreements
+        </h1>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1.5">
@@ -110,7 +105,7 @@ export function CruxesDirectory() {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/40 p-3.5">
                   <div className="text-[11px] font-bold text-emerald-900">
-                    Thinks likely / Betting on it ({c.supporters.length})
+                    Bullish / Betting ({c.supporters.length})
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {c.supporters.length > 0 ? (
@@ -125,14 +120,14 @@ export function CruxesDirectory() {
                         </Link>
                       ))
                     ) : (
-                      <span className="text-xs italic text-[var(--ink-muted)]">Nobody on this side yet</span>
+                      <span className="text-xs italic text-[var(--ink-muted)]">None yet</span>
                     )}
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-rose-200/70 bg-rose-50/40 p-3.5">
                   <div className="text-[11px] font-bold text-rose-900">
-                    Skeptical / Not betting on it ({c.skeptics.length})
+                    Skeptical / Rejected ({c.skeptics.length})
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {c.skeptics.length > 0 ? (

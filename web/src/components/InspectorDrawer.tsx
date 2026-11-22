@@ -86,7 +86,7 @@ export function InspectorDrawer({
       {node.note && (
         <div className="mt-3.5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-            Author Nuance
+            Notes
           </div>
           <p className="mt-1 text-xs leading-relaxed text-[var(--ink-secondary)]">{node.note}</p>
         </div>
