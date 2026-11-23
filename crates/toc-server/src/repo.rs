@@ -540,20 +540,18 @@ impl PostgresRepo {
 #[async_trait]
 impl Repository for PostgresRepo {
     async fn seed_if_empty(&self) -> Result<()> {
-        let force_reseed = std::env::var("RESEED").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
+        let force_reseed = std::env::var("RESEED")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
         if force_reseed {
             sqlx::query("TRUNCATE TABLE arweave_outbox, link_attestations, snapshot_nodes_index, toc_snapshots, actors, concepts RESTART IDENTITY CASCADE")
                 .execute(&self.pool)
                 .await?;
-        } else {
-            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM actors")
-                .fetch_one(&self.pool)
-                .await?;
-            if count > 0 {
-                return Ok(());
-            }
         }
+
         let bundle = seed::build_seed_bundle();
+
+        // 1. Additively insert any new concepts from seed-bundle.json (never overwrites existing)
         for c in &bundle.concepts {
             sqlx::query(
                 r#"
@@ -576,21 +574,47 @@ impl Repository for PostgresRepo {
             .execute(&self.pool)
             .await?;
         }
+
+        // 2. Additively insert any NEW actors & their initial snapshots (never overwrites existing/claimed actors!)
+        let snap_by_actor: HashMap<&str, &ToCSnapshot> = bundle
+            .snapshots
+            .iter()
+            .map(|s| (s.actor_id.as_str(), s))
+            .collect();
+
+        let mut added_actors = 0usize;
+        let mut skipped_actors = 0usize;
+
         for a in &bundle.actors {
-            self.upsert_actor(a.clone()).await?;
-        }
-        for s in &bundle.snapshots {
-            self.insert_snapshot_internal(s, false).await?;
-        }
-        // Ensure primary_snapshot_id matches seed actors
-        for a in &bundle.actors {
-            if let Some(pid) = &a.primary_snapshot_id {
-                sqlx::query("UPDATE actors SET primary_snapshot_id = $1 WHERE id = $2")
-                    .bind(pid)
-                    .bind(&a.id)
-                    .execute(&self.pool)
-                    .await?;
+            let exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM actors WHERE id = $1 OR LOWER(handle) = LOWER($2))",
+            )
+            .bind(&a.id)
+            .bind(&a.handle)
+            .fetch_one(&self.pool)
+            .await?;
+
+            if exists {
+                skipped_actors += 1;
+                continue;
             }
+
+            let mut actor_row = a.clone();
+            actor_row.primary_snapshot_id = None;
+            self.upsert_actor(actor_row).await?;
+
+            if let Some(s) = snap_by_actor.get(a.id.as_str()) {
+                self.insert_snapshot_internal(s, false).await?;
+            }
+            added_actors += 1;
+        }
+
+        if added_actors > 0 {
+            tracing::info!(
+                added_actors,
+                skipped_actors,
+                "Synced new profiles from seed-bundle.json into PostgreSQL"
+            );
         }
         Ok(())
     }
