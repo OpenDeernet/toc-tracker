@@ -550,7 +550,7 @@ pub async fn x_oauth_start(
     );
 
     let url = format!(
-        "https://twitter.com/i/oauth2/authorize?response_type=code&client_id={}&redirect_uri={}&scope=users.read%20tweet.read&state={}&code_challenge={}&code_challenge_method=S256",
+        "https://x.com/i/oauth2/authorize?response_type=code&client_id={}&redirect_uri={}&scope=users.read%20tweet.read&state={}&code_challenge={}&code_challenge_method=S256",
         urlencoding::encode(&client_id),
         urlencoding::encode(&redirect_uri),
         urlencoding::encode(&state_key),
@@ -578,7 +578,7 @@ pub async fn x_oauth_callback(
 
     let client = reqwest::Client::new();
     let mut token_req = client
-        .post("https://api.twitter.com/2/oauth2/token")
+        .post("https://api.x.com/2/oauth2/token")
         .form(&[
             ("grant_type", "authorization_code"),
             ("code", code.as_str()),
@@ -601,7 +601,7 @@ pub async fn x_oauth_callback(
     };
 
     let Ok(me_resp) = client
-        .get("https://api.twitter.com/2/users/me?user.fields=username,name")
+        .get("https://api.x.com/2/users/me?user.fields=username,name")
         .bearer_auth(access_token)
         .send()
         .await
