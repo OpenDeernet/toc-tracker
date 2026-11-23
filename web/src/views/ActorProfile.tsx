@@ -207,15 +207,25 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 ))}
               </select>
             )}
-            {snapshot?.arweave_tx_id && (
+            {snapshot && (
               <a
                 href={`/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=json`}
                 target="_blank"
                 rel="noreferrer"
-                title="View open JSON record (archived on Arweave)"
+                title={
+                  snapshot.arweave_tx_id &&
+                  !snapshot.arweave_tx_id.startsWith('seed_') &&
+                  !snapshot.arweave_tx_id.startsWith('local_')
+                    ? 'View open JSON record (archived on Arweave)'
+                    : 'View open JSON record (toc-schema/v1)'
+                }
                 className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono-meta text-[11px] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
               >
-                ar://{snapshot.arweave_tx_id.slice(0, 6)}..{snapshot.arweave_tx_id.slice(-3)}
+                {snapshot.arweave_tx_id &&
+                !snapshot.arweave_tx_id.startsWith('seed_') &&
+                !snapshot.arweave_tx_id.startsWith('local_')
+                  ? `ar://${snapshot.arweave_tx_id.slice(0, 6)}..${snapshot.arweave_tx_id.slice(-3)}`
+                  : 'JSON'}
               </a>
             )}
             <a
@@ -508,7 +518,9 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {s.arweave_tx_id && (
+                      {s.arweave_tx_id &&
+                        !s.arweave_tx_id.startsWith('seed_') &&
+                        !s.arweave_tx_id.startsWith('local_') && (
                         <span className="font-mono-meta text-[11px] text-[var(--ink-muted)]">
                           ar://{s.arweave_tx_id.slice(0, 10)}…
                         </span>

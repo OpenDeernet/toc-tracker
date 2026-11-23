@@ -161,7 +161,7 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
           <div className="w-full max-w-lg rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xl">
             <h3 className="text-base font-semibold">Ed25519 Signing Key</h3>
             <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-              Your Ed25519 key for Arweave snapshots. Back it up.
+              Your Ed25519 key for signing open-data snapshots. Back it up.
             </p>
             <pre className="mt-3 max-h-60 overflow-auto rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3 font-mono-meta text-[11px] text-[var(--ink-primary)]">
               {exportedKey}

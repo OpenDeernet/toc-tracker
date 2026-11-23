@@ -187,7 +187,7 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
 
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2.5 text-[11px] text-[var(--ink-secondary)]">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-700" />
-          <span>Ed25519-signed & Arweave-archived. Export your key anytime.</span>
+          <span>Open JSON data · Ed25519-signed · Export your key anytime.</span>
         </div>
       </div>
     </div>
