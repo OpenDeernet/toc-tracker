@@ -184,9 +184,15 @@ pub async fn extract_draft_from_documents(
     docs: &[SourceDocumentInput],
     concepts: &[Concept],
 ) -> ExtractedDraft {
-    let client = reqwest::Client::builder()
+    let fetch_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(12))
-        .user_agent("toc-open-extractor/0.1")
+        .user_agent("toctracker-extractor/0.1")
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+
+    let llm_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .user_agent("toctracker-extractor/0.1")
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -203,7 +209,7 @@ pub async fn extract_draft_from_documents(
         let mut text = doc.text.as_deref().unwrap_or("").trim().to_string();
         if text.len() < 80 {
             if let Some(ref url) = url_clean {
-                if let Ok(resp) = client.get(url).send().await {
+                if let Ok(resp) = fetch_client.get(url).send().await {
                     if resp.status().is_success() {
                         if let Ok(body) = resp.text().await {
                             let cleaned = html_to_readable_text(&body);
@@ -250,8 +256,8 @@ pub async fn extract_draft_from_documents(
 
     match &provider {
         LlmProvider::OpenRouter { api_key, model } => {
-            if let Ok(draft) = extract_via_openai_compat(
-                &client,
+            match extract_via_openai_compat(
+                &llm_client,
                 "https://openrouter.ai/api/v1/chat/completions",
                 api_key,
                 model,
@@ -261,12 +267,13 @@ pub async fn extract_draft_from_documents(
             )
             .await
             {
-                return draft;
+                Ok(draft) => return draft,
+                Err(e) => tracing::warn!(error = %e, "OpenRouter extraction fell back to heuristic"),
             }
         }
         LlmProvider::OpenAI { api_key, model } => {
-            if let Ok(draft) = extract_via_openai_compat(
-                &client,
+            match extract_via_openai_compat(
+                &llm_client,
                 "https://api.openai.com/v1/chat/completions",
                 api_key,
                 model,
@@ -276,12 +283,14 @@ pub async fn extract_draft_from_documents(
             )
             .await
             {
-                return draft;
+                Ok(draft) => return draft,
+                Err(e) => tracing::warn!(error = %e, "OpenAI extraction fell back to heuristic"),
             }
         }
         LlmProvider::Anthropic { api_key, model } => {
-            if let Ok(draft) = extract_via_anthropic(&client, api_key, model, &prepared, concepts).await {
-                return draft;
+            match extract_via_anthropic(&llm_client, api_key, model, &prepared, concepts).await {
+                Ok(draft) => return draft,
+                Err(e) => tracing::warn!(error = %e, "Anthropic extraction fell back to heuristic"),
             }
         }
         LlmProvider::LocalHeuristic => {}
@@ -640,18 +649,19 @@ async fn extract_via_openai_compat(
     concepts: &[Concept],
 ) -> anyhow::Result<ExtractedDraft> {
     let prompt = build_extraction_prompt(docs, concepts);
-    let mut req = client
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .json(&serde_json::json!({
-            "model": model,
-            "response_format": { "type": "json_object" },
-            "temperature": 0.2,
-            "messages": [
-                { "role": "system", "content": "You are an AI Safety epistemologist mapping documents onto structured Theories of Change. Output strict JSON only." },
-                { "role": "user", "content": prompt }
-            ]
-        }));
+    let mut body = serde_json::json!({
+        "model": model,
+        "max_tokens": 4096,
+        "temperature": 0.2,
+        "messages": [
+            { "role": "system", "content": "You are an AI Safety epistemologist mapping documents onto structured Theories of Change. Output strict JSON only with no markdown commentary." },
+            { "role": "user", "content": prompt }
+        ]
+    });
+    if !model.starts_with("anthropic/") {
+        body["response_format"] = serde_json::json!({ "type": "json_object" });
+    }
+    let mut req = client.post(endpoint).bearer_auth(api_key).json(&body);
     if provider_name == "openrouter" {
         req = req
             .header("HTTP-Referer", "https://toctracker.com")
@@ -660,7 +670,10 @@ async fn extract_via_openai_compat(
 
     let resp = req.send().await?;
     if !resp.status().is_success() {
-        anyhow::bail!("LLM request failed ({})", resp.status());
+        let status = resp.status();
+        let err_txt = resp.text().await.unwrap_or_default();
+        tracing::warn!(provider = provider_name, model = model, %status, error = %err_txt, "LLM extraction request failed");
+        anyhow::bail!("LLM request failed ({status})");
     }
     let val: serde_json::Value = resp.json().await?;
     let content = val["choices"][0]["message"]["content"]
@@ -902,8 +915,10 @@ async fn stress_test_with_llm(
         .map(|u| format!("- IF {} THEN {}", u.trigger, u.pivot_action))
         .collect();
 
+    let today = chrono::Utc::now().format("%B %Y");
     let prompt = format!(
         r#"Stress-test this AI Safety Theory of Change like a sharp, charitable LessWrong peer reviewer.
+Today's date is {today}. Keep timeframes in the future relative to {today}.
 Be concise, specific, and zero-fluff.
 
 THEORY OF CHANGE ({} edges):
@@ -933,29 +948,36 @@ RETURN STRICT JSON ONLY:
     );
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(45))
         .build()?;
 
     let (raw, prov_name, model_name) = match provider {
         LlmProvider::OpenRouter { api_key, model } => {
+            let mut body = serde_json::json!({
+                "model": model,
+                "max_tokens": 1200,
+                "temperature": 0.3,
+                "messages": [
+                    { "role": "system", "content": "You are a rigorous AI Safety epistemologist. Output strict JSON only with no markdown commentary." },
+                    { "role": "user", "content": prompt }
+                ]
+            });
+            if !model.starts_with("anthropic/") {
+                body["response_format"] = serde_json::json!({ "type": "json_object" });
+            }
             let resp = client
                 .post("https://openrouter.ai/api/v1/chat/completions")
                 .bearer_auth(api_key)
                 .header("HTTP-Referer", "https://toctracker.com")
                 .header("X-Title", "toctracker.com")
-                .json(&serde_json::json!({
-                    "model": model,
-                    "response_format": { "type": "json_object" },
-                    "temperature": 0.3,
-                    "messages": [
-                        { "role": "system", "content": "You are a rigorous AI Safety epistemologist. Output strict JSON only." },
-                        { "role": "user", "content": prompt }
-                    ]
-                }))
+                .json(&body)
                 .send()
                 .await?;
             if !resp.status().is_success() {
-                anyhow::bail!("OpenRouter stress-test error {}", resp.status());
+                let status = resp.status();
+                let err_txt = resp.text().await.unwrap_or_default();
+                tracing::warn!(model = %model, %status, error = %err_txt, "OpenRouter stress-test error");
+                anyhow::bail!("OpenRouter stress-test error {status}");
             }
             let val: serde_json::Value = resp.json().await?;
             let txt = val["choices"][0]["message"]["content"]
@@ -970,6 +992,7 @@ RETURN STRICT JSON ONLY:
                 .bearer_auth(api_key)
                 .json(&serde_json::json!({
                     "model": model,
+                    "max_tokens": 1200,
                     "response_format": { "type": "json_object" },
                     "temperature": 0.3,
                     "messages": [
@@ -980,7 +1003,10 @@ RETURN STRICT JSON ONLY:
                 .send()
                 .await?;
             if !resp.status().is_success() {
-                anyhow::bail!("OpenAI stress-test error {}", resp.status());
+                let status = resp.status();
+                let err_txt = resp.text().await.unwrap_or_default();
+                tracing::warn!(model = %model, %status, error = %err_txt, "OpenAI stress-test error");
+                anyhow::bail!("OpenAI stress-test error {status}");
             }
             let val: serde_json::Value = resp.json().await?;
             let txt = val["choices"][0]["message"]["content"]
