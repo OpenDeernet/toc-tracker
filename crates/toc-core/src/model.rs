@@ -117,6 +117,14 @@ impl AuthorshipMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReferenceLink {
+    pub title: String,
+    pub url: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Actor {
     pub id: String,
     pub handle: String,
@@ -127,6 +135,8 @@ pub struct Actor {
     pub one_line_stance: Option<String>,
     #[serde(default)]
     pub contact_preference: Option<String>,
+    #[serde(default)]
+    pub references: Vec<ReferenceLink>,
     pub bio_url: Option<String>,
     pub avatar_initials: String,
     pub authorship_status: AuthorshipStatus,

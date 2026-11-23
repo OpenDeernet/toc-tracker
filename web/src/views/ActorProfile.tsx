@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
+  BookOpen,
   Download,
   ExternalLink,
   GitCompare,
   GitFork,
   Pencil,
+  Plus,
   ShieldCheck,
   Target,
+  Trash2,
   UserCheck,
   X,
 } from 'lucide-react';
@@ -18,6 +21,7 @@ import {
   type ActorDetailResponse,
   type CriterionStatus,
   type PublicUser,
+  type ReferenceLink,
   type ToCSnapshot,
 } from '../types';
 import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
@@ -45,6 +49,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
   const [profStance, setProfStance] = useState('');
   const [profContact, setProfContact] = useState('');
   const [profUrl, setProfUrl] = useState('');
+  const [profRefs, setProfRefs] = useState<ReferenceLink[]>([]);
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [editingEssay, setEditingEssay] = useState(false);
@@ -92,6 +97,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
     setProfStance(data.actor.one_line_stance ?? '');
     setProfContact(data.actor.contact_preference ?? '');
     setProfUrl(data.actor.bio_url ?? '');
+    setProfRefs(data.actor.references ?? []);
     setProfileModalOpen(true);
   }
 
@@ -105,6 +111,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
         one_line_stance: profStance,
         contact_preference: profContact,
         bio_url: profUrl,
+        references: profRefs.filter((r) => r.url.trim().length > 0),
       });
       setProfileModalOpen(false);
       loadActor();
@@ -500,6 +507,64 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 </div>
               )}
 
+              {((actor.references && actor.references.length > 0) || isOwner) && (
+                <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+                  <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
+                    <div>
+                      <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                        Context & Foundational Links
+                      </div>
+                      <h2 className="mt-0.5 flex items-center gap-2 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
+                        <BookOpen className="h-4 w-4 text-[var(--ink-muted)]" />
+                        Influences & Key Reading
+                      </h2>
+                    </div>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={openProfileEditor}
+                        className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                      >
+                        {actor.references && actor.references.length > 0 ? 'Edit Links' : '+ Add Links'}
+                      </button>
+                    )}
+                  </div>
+
+                  {actor.references && actor.references.length > 0 ? (
+                    <div className="mt-4 space-y-2.5">
+                      {actor.references.map((ref, idx) => (
+                        <a
+                          key={idx}
+                          href={ref.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group block rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 transition hover:border-[var(--ink-primary)]"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-[var(--ink-primary)] group-hover:underline">
+                              {ref.title}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)] group-hover:text-[var(--ink-primary)]" />
+                          </div>
+                          {ref.note && (
+                            <p className="mt-1 text-xs leading-relaxed text-[var(--ink-secondary)]">
+                              {ref.note}
+                            </p>
+                          )}
+                          <div className="mt-1 truncate font-mono-meta text-[10px] text-[var(--ink-muted)]">
+                            {ref.url}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                      Add posts, papers, or talks you stand by that give context on your Theory of Change.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
                 <div className="border-b border-[var(--border-hairline)] pb-3">
                   <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
@@ -727,7 +792,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
           <form
             onSubmit={handleSaveProfile}
-            className="w-full max-w-md rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xl"
           >
             <div className="flex items-start justify-between">
               <h3 className="text-base font-bold text-[var(--ink-primary)]">Edit Profile</h3>
@@ -797,6 +862,76 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                   placeholder="https://..."
                   className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
                 />
+              </div>
+
+              <div className="border-t border-[var(--border-hairline)] pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[var(--ink-secondary)]">
+                    Influences & Key Reading
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setProfRefs((prev) => [...prev, { title: '', url: '', note: '' }])}
+                    className="inline-flex items-center gap-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add link
+                  </button>
+                </div>
+                <p className="mt-0.5 text-[11px] text-[var(--ink-muted)]">
+                  Posts, papers, or talks you stand by that establish context on your position.
+                </p>
+                <div className="mt-2 space-y-2">
+                  {profRefs.map((ref, idx) => (
+                    <div
+                      key={idx}
+                      className="space-y-1.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-2.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={ref.title}
+                          onChange={(e) =>
+                            setProfRefs((prev) =>
+                              prev.map((r, i) => (i === idx ? { ...r, title: e.target.value } : r))
+                            )
+                          }
+                          placeholder="Title (e.g. AI Control paper)"
+                          className="flex-1 rounded-md border border-[var(--border-hairline)] bg-white px-2.5 py-1 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setProfRefs((prev) => prev.filter((_, i) => i !== idx))}
+                          className="rounded p-1 text-[var(--ink-muted)] hover:bg-rose-50 hover:text-rose-700"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <input
+                        type="url"
+                        value={ref.url}
+                        onChange={(e) =>
+                          setProfRefs((prev) =>
+                            prev.map((r, i) => (i === idx ? { ...r, url: e.target.value } : r))
+                          )
+                        }
+                        placeholder="https://..."
+                        className="w-full rounded-md border border-[var(--border-hairline)] bg-white px-2.5 py-1 font-mono-meta text-[11px]"
+                      />
+                      <input
+                        type="text"
+                        value={ref.note ?? ''}
+                        onChange={(e) =>
+                          setProfRefs((prev) =>
+                            prev.map((r, i) => (i === idx ? { ...r, note: e.target.value } : r))
+                          )
+                        }
+                        placeholder="Why this shaped your view (optional)"
+                        className="w-full rounded-md border border-[var(--border-hairline)] bg-white px-2.5 py-1 text-[11px]"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">

@@ -15,6 +15,7 @@ import type {
   LiveMatchResponse,
   OwnedActorLink,
   PublicUser,
+  ReferenceLink,
   SimilarConceptMatch,
   SnapshotEdge,
   SnapshotNode,
@@ -129,6 +130,7 @@ export const api = {
       role_or_affiliation?: string;
       one_line_stance?: string;
       contact_preference?: string;
+      references?: ReferenceLink[];
       bio_url?: string;
     }
   ) {

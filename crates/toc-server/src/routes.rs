@@ -643,6 +643,34 @@ async fn list_archetypes() -> Json<Vec<Archetype>> {
     Json(seed::build_seed_bundle().archetypes)
 }
 
+fn sanitize_references(raw: Vec<ReferenceLink>) -> Vec<ReferenceLink> {
+    raw.into_iter()
+        .take(20)
+        .filter_map(|r| {
+            let url = r.url.trim().to_string();
+            if !(url.starts_with("https://") || url.starts_with("http://")) {
+                return None;
+            }
+            let title: String = r.title.trim().chars().take(120).collect();
+            let title = if title.is_empty() {
+                url.split("//")
+                    .nth(1)
+                    .and_then(|s| s.split('/').next())
+                    .unwrap_or("Link")
+                    .trim_start_matches("www.")
+                    .to_string()
+            } else {
+                title
+            };
+            let note = r
+                .note
+                .map(|n| n.trim().chars().take(240).collect::<String>())
+                .filter(|n| !n.is_empty());
+            Some(ReferenceLink { title, url, note })
+        })
+        .collect()
+}
+
 #[derive(Deserialize)]
 struct CreateActorRequest {
     handle: String,
@@ -651,6 +679,7 @@ struct CreateActorRequest {
     role_or_affiliation: Option<String>,
     one_line_stance: Option<String>,
     contact_preference: Option<String>,
+    references: Option<Vec<ReferenceLink>>,
     bio_url: Option<String>,
     authorship_status: Option<AuthorshipStatus>,
     tags: Option<Vec<String>>,
@@ -733,6 +762,7 @@ async fn create_actor(
             .contact_preference
             .map(|s| s.trim().chars().take(180).collect::<String>())
             .filter(|s| !s.is_empty()),
+        references: sanitize_references(req.references.unwrap_or_default()),
         bio_url,
         avatar_initials: if initials.is_empty() { "AI".into() } else { initials },
         authorship_status: status,
@@ -973,6 +1003,7 @@ struct UpdateProfileRequest {
     role_or_affiliation: Option<String>,
     one_line_stance: Option<String>,
     contact_preference: Option<String>,
+    references: Option<Vec<ReferenceLink>>,
     bio_url: Option<String>,
 }
 
@@ -1014,6 +1045,9 @@ async fn update_actor_profile(
     if let Some(contact) = req.contact_preference {
         let s: String = contact.trim().chars().take(180).collect();
         actor.contact_preference = if s.is_empty() { None } else { Some(s) };
+    }
+    if let Some(refs) = req.references {
+        actor.references = sanitize_references(refs);
     }
     if let Some(url) = req.bio_url {
         let u = url.trim().to_string();

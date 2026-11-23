@@ -35,6 +35,18 @@ pub fn snapshot_to_markdown(
         md.push_str("\n\n---\n\n");
     }
 
+    if !actor.references.is_empty() {
+        md.push_str("## Influences & Key Reading\n\n");
+        for r in &actor.references {
+            if let Some(n) = r.note.as_deref().filter(|s| !s.trim().is_empty()) {
+                md.push_str(&format!("- [{}]({}) — {}\n", r.title, r.url, n));
+            } else {
+                md.push_str(&format!("- [{}]({})\n", r.title, r.url));
+            }
+        }
+        md.push('\n');
+    }
+
     for stage in Stage::all() {
         let active_nodes: Vec<&SnapshotNode> = snapshot
             .nodes

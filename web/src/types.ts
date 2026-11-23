@@ -44,6 +44,12 @@ export function credencePill(c?: Credence | null): string {
   return bandLabel(c.band);
 }
 
+export interface ReferenceLink {
+  title: string;
+  url: string;
+  note?: string | null;
+}
+
 export interface Actor {
   id: string;
   handle: string;
@@ -52,6 +58,7 @@ export interface Actor {
   role_or_affiliation: string;
   one_line_stance?: string | null;
   contact_preference?: string | null;
+  references?: ReferenceLink[];
   bio_url?: string | null;
   avatar_initials: string;
   authorship_status: AuthorshipStatus;
