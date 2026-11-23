@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Copy, Database, ExternalLink, FileCode2, Layers, ShieldCheck } from 'lucide-react';
+import { Bot, Check, Copy, Database, ExternalLink, FileCode2, Layers, ShieldCheck } from 'lucide-react';
 
 interface HealthInfo {
   status: string;
@@ -89,6 +89,7 @@ const ARWEAVE_QUERY = `{
 export function OpenDataDocs() {
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [archive, setArchive] = useState<ArchiveRecordsResponse | null>(null);
+  const [llmsTxt, setLlmsTxt] = useState<string>('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://toctracker.com';
 
@@ -101,7 +102,30 @@ export function OpenDataDocs() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setArchive(d))
       .catch(() => {});
+    fetch('/llms.txt')
+      .then((r) => (r.ok ? r.text() : ''))
+      .then((t) => t && setLlmsTxt(t))
+      .catch(() => {});
   }, []);
+
+  async function copyForAgent() {
+    let text = llmsTxt;
+    if (!text) {
+      try {
+        const res = await fetch('/llms.txt');
+        if (res.ok) {
+          text = await res.text();
+          setLlmsTxt(text);
+        }
+      } catch {
+        // fallback below
+      }
+    }
+    if (!text) {
+      text = `toctracker.com Open Data API\nDocs & full endpoint list: ${origin}/llms.txt\nActors JSON: ${origin}/api/v1/actors\nField Intelligence: ${origin}/api/v1/intelligence/field`;
+    }
+    copy('agent_all', text);
+  }
 
   function copy(key: string, text: string) {
     navigator.clipboard.writeText(text);
@@ -138,6 +162,52 @@ export function OpenDataDocs() {
           API key required. Pull the JSON into notebooks, run your own clustering, or mirror the permanent
           Arweave archive directly.
         </p>
+
+        {/* Obvious 1-Click Copy for AI Agents Banner */}
+        <div className="mt-5 flex flex-col justify-between gap-3 rounded-2xl border border-[var(--ink-primary)]/20 bg-[var(--bg-surface)] p-4 shadow-xs sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ink-primary)] text-white">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-[var(--ink-primary)]">
+                Pipe into Claude, Cursor, Codex, or your own agent
+              </div>
+              <p className="mt-0.5 text-xs text-[var(--ink-secondary)]">
+                Copies a clean plain-text spec (<code className="font-mono-meta">/llms.txt</code>) with all
+                API endpoints, schema rules, Arweave GraphQL query, and all {health?.actors_count ?? 26} actor handles.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={copyForAgent}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+            >
+              {copiedKey === 'agent_all' ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  Copied for Agent
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy for AI / Agent
+                </>
+              )}
+            </button>
+            <a
+              href="/llms.txt"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 font-mono-meta text-xs font-semibold text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
+            >
+              /llms.txt
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Section 1: Public REST Read API */}

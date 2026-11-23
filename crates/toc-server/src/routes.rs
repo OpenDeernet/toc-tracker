@@ -139,9 +139,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/og/home.png", get(og_home_png))
         .route("/og/actor/{handle}", get(og_actor_png))
         .route("/og/compare", get(og_compare_png))
-        // SEO & Crawlers
+        // SEO, Crawlers & Agent Context
         .route("/robots.txt", get(robots_txt))
         .route("/sitemap.xml", get(sitemap_xml))
+        .route("/llms.txt", get(llms_txt))
         // Dynamic meta-injected HTML routes for social cards
         .route("/a/{handle}", get(spa_actor_html))
         .route("/compare", get(spa_compare_html))
@@ -1598,6 +1599,109 @@ async fn robots_txt(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     (
         StatusCode::OK,
         [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        body,
+    )
+}
+
+async fn llms_txt(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let base = state.public_base_url.trim_end_matches('/');
+    let actors = state.repo.list_actors().await.unwrap_or_default();
+    let actor_lines: String = actors
+        .iter()
+        .map(|a| {
+            format!(
+                "- {} (`{}`): {}/api/v1/actors/{}/export?format=markdown | JSON: {}/api/v1/actors/{}\n",
+                a.display_name, a.handle, base, a.handle, base, a.handle
+            )
+        })
+        .collect();
+
+    let body = format!(
+        r#"# toctracker.com — Open Data & API Guide for AI Agents
+
+> Open-source, open-data Theory of Change tracker for AI Safety ({count} mapped actors/organizations).
+> All read endpoints below are FREE, require NO API key, and return CORS-open JSON or Markdown.
+> Source & MIT repo: https://github.com/satori-co/toc-tracker
+
+## Free Public Read API ({base})
+
+- List all actors & summaries:
+  GET {base}/api/v1/actors
+  (optional filters: ?q=search, ?tag=technical-alignment, ?kind=individual|organization)
+
+- Full actor profile, snapshots, nodes, edges, essays, references & concepts:
+  GET {base}/api/v1/actors/{{handle}}
+
+- Portable single-file Markdown or JSON export (best for piping one actor into an LLM):
+  GET {base}/api/v1/actors/{{handle}}/export?format=markdown
+  GET {base}/api/v1/actors/{{handle}}/export?format=json
+
+- Side-by-side comparison, shared ground, earliest-split diagnostic & ranked disagreements:
+  GET {base}/api/v1/compare?a={{handle_a}}&b={{handle_b}}
+
+- Most contested field claims (supporters vs. skeptics per canonical root concept):
+  GET {base}/api/v1/cruxes
+
+- Computed field intelligence (neglected bottlenecks, sharpest fault lines, cross-camp allies, unfalsifiable hotspots):
+  GET {base}/api/v1/intelligence/field
+
+- Canonical concept registry + forked phrasings (parent_concept_id -> root_concept_id):
+  GET {base}/api/v1/concepts
+  GET {base}/api/v1/concepts/{{root_id}}
+
+- Live Arweave permanent archive index:
+  GET {base}/api/v1/archive/records
+
+## Schema Summary (toc-schema/v1)
+
+Every Theory of Change maps onto a 5-stage directed acyclic spine:
+1. premise      (What happens by default?)
+2. bottleneck   (What specific obstacle blocks a good outcome?)
+3. intervention (What mechanism shifts the trajectory?)
+4. bet          (What concrete work are they doing right now?)
+5. outcome      (What does success look like?)
+
+Key invariants:
+- Nodes carry `stance` ("active" | "rejected" | "deprioritized" | "open_crux"), optional `credence` (qualitative band or exact percent + required rationale >= 10 chars), `is_load_bearing_crux`, `note`, and `citations`.
+- Every snapshot requires >= 1 concrete `update_criteria` item (`trigger` + `pivot_action` + `status`).
+- Snapshots may include `essay_markdown` (linear prose in the author's own words) and actors may include `one_line_stance`, `contact_preference`, and `references`.
+- Forked concepts preserve custom phrasing while sharing `root_concept_id` for lossless comparison.
+
+## Permanent Arweave Archive (ANS-104 via ArDrive Turbo)
+
+Query directly via https://arweave.net/graphql without touching toctracker.com:
+
+```graphql
+{{
+  transactions(
+    tags: [
+      {{ name: "App-Name", values: ["toctracker"] }}
+      {{ name: "Schema-Version", values: ["1"] }}
+    ]
+    first: 100
+  ) {{
+    edges {{
+      node {{
+        id
+        tags {{ name value }}
+      }}
+    }}
+  }}
+}}
+```
+
+## Mapped Actors ({count})
+
+{actor_lines}"#,
+        count = actors.len(),
+    );
+
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=120"),
+        ],
         body,
     )
 }

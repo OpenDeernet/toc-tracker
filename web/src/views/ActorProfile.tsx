@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   BookOpen,
+  Check,
+  Copy,
   Download,
   ExternalLink,
   GitCompare,
@@ -57,6 +59,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
   const [savingEssay, setSavingEssay] = useState(false);
 
   const [updatingCriterionId, setUpdatingCriterionId] = useState<string | null>(null);
+  const [copiedMd, setCopiedMd] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function loadActor() {
@@ -333,10 +336,31 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 </a>
               );
             })()}
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const r = await fetch(
+                    `/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=markdown`
+                  );
+                  if (r.ok) {
+                    await navigator.clipboard.writeText(await r.text());
+                    setCopiedMd(true);
+                    setTimeout(() => setCopiedMd(false), 1800);
+                  }
+                } catch {}
+              }}
+              title="Copy full Markdown Theory of Change for AI / notes"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-hairline)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
+            >
+              {copiedMd ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedMd ? 'Copied' : 'Copy MD'}
+            </button>
             <a
               href={`/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=markdown`}
               target="_blank"
               rel="noreferrer"
+              title="Open raw Markdown export"
               className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-hairline)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
             >
               <Download className="h-3.5 w-3.5" />
