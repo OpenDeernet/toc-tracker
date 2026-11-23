@@ -56,6 +56,15 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    // When live Arweave Turbo is enabled, automatically backfill any seeded/unarchived primary snapshots (<100 KiB free tier)
+    if storage.adapter_name() == "arweave-turbo" {
+        match repo.enqueue_unarchived_snapshots(100).await {
+            Ok(n) if n > 0 => info!(queued = n, "Enqueued unarchived primary snapshots for Arweave Turbo backfill"),
+            Ok(_) => {}
+            Err(e) => warn!("Arweave backfill enqueue check failed: {e}"),
+        }
+    }
+
     // Spawn background Arweave outbox publisher
     let bg_repo = repo.clone();
     let bg_storage = storage.clone();

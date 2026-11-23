@@ -65,6 +65,7 @@ pub trait Repository: Send + Sync {
     async fn pop_pending_outbox(&self, limit: usize) -> Result<Vec<OutboxItem>>;
     async fn mark_outbox_published(&self, outbox_id: &str, record_type: &str, record_id: &str, tx_id: &str) -> Result<()>;
     async fn mark_outbox_failed(&self, outbox_id: &str, err: &str) -> Result<()>;
+    async fn enqueue_unarchived_snapshots(&self, limit: usize) -> Result<usize>;
 }
 
 // ============================================================================
@@ -366,6 +367,53 @@ impl Repository for MemoryRepo {
             item.status = "failed".into();
         }
         Ok(())
+    }
+
+    async fn enqueue_unarchived_snapshots(&self, limit: usize) -> Result<usize> {
+        let mut st = self.state.write().unwrap();
+        let existing_pending: std::collections::HashSet<String> = st
+            .outbox
+            .iter()
+            .filter(|o| o.status == "pending")
+            .map(|o| o.envelope.record_id.clone())
+            .collect();
+        let primary_ids: std::collections::HashSet<String> = st
+            .actors
+            .values()
+            .filter_map(|a| a.primary_snapshot_id.clone())
+            .collect();
+        let to_enqueue: Vec<ToCSnapshot> = st
+            .snapshots
+            .values()
+            .filter(|s| {
+                primary_ids.contains(&s.id)
+                    && !existing_pending.contains(&s.id)
+                    && s.arweave_tx_id
+                        .as_deref()
+                        .map(|t| t.starts_with("seed_") || t.starts_with("local_"))
+                        .unwrap_or(true)
+            })
+            .take(limit)
+            .cloned()
+            .collect();
+        let count = to_enqueue.len();
+        for snap in to_enqueue {
+            let env = PublishEnvelope {
+                record_type: "toc_snapshot".into(),
+                record_id: snap.id.clone(),
+                actor_id: Some(snap.actor_id.clone()),
+                root_concept_id: None,
+                prev_tx_id: None,
+                payload: serde_json::to_value(&snap)?,
+            };
+            st.outbox.push(OutboxItem {
+                id: format!("obx_{}", uuid::Uuid::new_v4().simple()),
+                envelope: env,
+                status: "pending".into(),
+                arweave_tx_id: None,
+            });
+        }
+        Ok(count)
     }
 }
 
@@ -1019,5 +1067,47 @@ impl Repository for PostgresRepo {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn enqueue_unarchived_snapshots(&self, limit: usize) -> Result<usize> {
+        let rows = sqlx::query(
+            r#"
+            SELECT s.id, s.actor_id, s.payload_json
+            FROM toc_snapshots s
+            JOIN actors a ON a.primary_snapshot_id = s.id
+            WHERE (s.arweave_tx_id IS NULL OR s.arweave_tx_id LIKE 'seed_%' OR s.arweave_tx_id LIKE 'local_%')
+              AND NOT EXISTS (
+                SELECT 1 FROM arweave_outbox o
+                WHERE o.record_id = s.id AND o.status = 'pending'
+              )
+            ORDER BY s.published_at ASC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut count = 0usize;
+        for r in rows {
+            let sid: String = r.try_get("id")?;
+            let aid: String = r.try_get("actor_id")?;
+            let payload: serde_json::Value = r.try_get("payload_json")?;
+            let obx_id = format!("obx_{}", uuid::Uuid::new_v4().simple());
+            sqlx::query(
+                r#"
+                INSERT INTO arweave_outbox (id, record_type, record_id, actor_id, payload_json)
+                VALUES ($1, 'toc_snapshot', $2, $3, $4)
+                "#,
+            )
+            .bind(obx_id)
+            .bind(sid)
+            .bind(aid)
+            .bind(payload)
+            .execute(&self.pool)
+            .await?;
+            count += 1;
+        }
+        Ok(count)
     }
 }

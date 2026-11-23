@@ -108,6 +108,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/concepts/{root_id}", get(get_concept_spectrum))
         .route("/cruxes", get(list_field_cruxes))
         .route("/intelligence/field", get(field_intelligence))
+        .route("/archive/records", get(list_archive_records))
         .route("/archetypes", get(list_archetypes))
         .route("/snapshots", post(publish_snapshot))
         .route("/attestations", get(list_attestations).post(create_attestation))
@@ -168,6 +169,7 @@ async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                     "ai_llm_enabled": ai.llm_enabled,
                     "dev_login_enabled": auth::dev_login_allowed(&state),
                     "magic_link_enabled": auth::magic_link_enabled(),
+                    "key_encryption_enabled": auth::key_encryption_enabled(),
                 })),
             )
         }
@@ -1415,6 +1417,67 @@ async fn field_intelligence(
         &concepts,
         &attestations,
     )))
+}
+
+#[derive(Serialize)]
+struct ArchiveRecordItem {
+    actor_handle: String,
+    display_name: String,
+    version: i32,
+    arweave_tx_id: Option<String>,
+    gateway_url: Option<String>,
+    is_live_arweave: bool,
+    published_at: chrono::DateTime<Utc>,
+}
+
+async fn list_archive_records(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let actors = state.repo.list_actors().await.map_err(internal_err)?;
+    let primary = state.repo.list_primary_snapshots().await.map_err(internal_err)?;
+    let snap_map: HashMap<&str, &ToCSnapshot> = primary.iter().map(|s| (s.id.as_str(), s)).collect();
+
+    let mut records = Vec::new();
+    let mut archived_count = 0usize;
+    for a in &actors {
+        let Some(snap) = a.primary_snapshot_id.as_deref().and_then(|sid| snap_map.get(sid)) else {
+            continue;
+        };
+        let is_live = snap
+            .arweave_tx_id
+            .as_deref()
+            .map(|t| !t.is_empty() && !t.starts_with("seed_") && !t.starts_with("local_"))
+            .unwrap_or(false);
+        if is_live {
+            archived_count += 1;
+        }
+        let gateway_url = if is_live {
+            snap.arweave_tx_id.as_deref().map(|t| state.storage.gateway_url(t))
+        } else {
+            None
+        };
+        records.push(ArchiveRecordItem {
+            actor_handle: a.handle.clone(),
+            display_name: a.display_name.clone(),
+            version: snap.version,
+            arweave_tx_id: if is_live { snap.arweave_tx_id.clone() } else { None },
+            gateway_url,
+            is_live_arweave: is_live,
+            published_at: snap.published_at,
+        });
+    }
+    records.sort_by(|a, b| {
+        b.is_live_arweave
+            .cmp(&a.is_live_arweave)
+            .then_with(|| a.display_name.cmp(&b.display_name))
+    });
+
+    Ok(Json(serde_json::json!({
+        "adapter": state.storage.adapter_name(),
+        "total_snapshots": records.len(),
+        "archived_count": archived_count,
+        "records": records,
+    })))
 }
 
 #[derive(Deserialize)]

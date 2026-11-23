@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use ed25519_dalek::{Signer, SigningKey};
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, RngCore};
+use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha384};
 
@@ -64,6 +65,59 @@ pub fn sign_payload_b64(secret_key_b64: &str, payload: &[u8]) -> Result<String> 
     let signing = parse_signing_key(secret_key_b64)?;
     let sig = signing.sign(payload);
     Ok(URL_SAFE_NO_PAD.encode(sig.to_bytes()))
+}
+
+fn derive_kek(app_key: &str) -> Result<LessSafeKey> {
+    let mut h = Sha256::new();
+    h.update(b"toctracker-kek-v1:");
+    h.update(app_key.trim().as_bytes());
+    let key_bytes = h.finalize();
+    let unbound = UnboundKey::new(&AES_256_GCM, &key_bytes)
+        .map_err(|_| anyhow!("failed to initialize AES-256-GCM key"))?;
+    Ok(LessSafeKey::new(unbound))
+}
+
+/// Encrypts a user's Ed25519 secret key at rest using AES-256-GCM when APP_ENCRYPTION_KEY is set.
+pub fn encrypt_secret_key(secret_b64: &str, app_key: Option<&str>) -> Result<String> {
+    let Some(k) = app_key.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(secret_b64.to_string());
+    };
+    let kek = derive_kek(k)?;
+    let mut nonce_bytes = [0u8; 12];
+    OsRng.fill_bytes(&mut nonce_bytes);
+    let nonce = Nonce::assume_unique_for_key(nonce_bytes);
+    let mut in_out = secret_b64.as_bytes().to_vec();
+    kek.seal_in_place_append_tag(nonce, Aad::empty(), &mut in_out)
+        .map_err(|_| anyhow!("AES-256-GCM encryption failed"))?;
+    let mut blob = Vec::with_capacity(12 + in_out.len());
+    blob.extend_from_slice(&nonce_bytes);
+    blob.extend_from_slice(&in_out);
+    Ok(format!("enc1:{}", URL_SAFE_NO_PAD.encode(blob)))
+}
+
+/// Decrypts an AES-256-GCM encrypted secret key (backwards-compatible with unencrypted legacy records).
+pub fn decrypt_secret_key(stored: &str, app_key: Option<&str>) -> Result<String> {
+    let Some(b64) = stored.strip_prefix("enc1:") else {
+        return Ok(stored.to_string());
+    };
+    let k = app_key
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow!("APP_ENCRYPTION_KEY is required to decrypt user signing keys"))?;
+    let kek = derive_kek(k)?;
+    let blob = URL_SAFE_NO_PAD
+        .decode(b64)
+        .map_err(|e| anyhow!("invalid encrypted key blob: {e}"))?;
+    if blob.len() < 12 + 16 {
+        return Err(anyhow!("corrupt encrypted key blob"));
+    }
+    let nonce_arr: [u8; 12] = blob[..12].try_into().unwrap();
+    let nonce = Nonce::assume_unique_for_key(nonce_arr);
+    let mut ciphertext = blob[12..].to_vec();
+    let plaintext = kek
+        .open_in_place(nonce, Aad::empty(), &mut ciphertext)
+        .map_err(|_| anyhow!("failed to decrypt signing key (check APP_ENCRYPTION_KEY)"))?;
+    String::from_utf8(plaintext.to_vec()).map_err(|e| anyhow!("invalid utf8 in decrypted key: {e}"))
 }
 
 fn parse_signing_key(secret_key_b64: &str) -> Result<SigningKey> {
@@ -316,5 +370,22 @@ mod tests {
         assert_eq!(&raw[0..2], &2u16.to_le_bytes());
         assert_eq!(tx_id.len(), 43); // 32-byte SHA-256 base64url nopad
         assert!(raw.ends_with(&data));
+    }
+
+    #[test]
+    fn aes256_gcm_encrypt_decrypt_roundtrip_and_tamper_detection() {
+        let kp = generate_user_keypair();
+        let app_key = "super-secret-prod-kek-example";
+        let enc = encrypt_secret_key(&kp.secret_key_b64, Some(app_key)).unwrap();
+        assert!(enc.starts_with("enc1:"));
+        assert_ne!(enc, kp.secret_key_b64);
+
+        let dec = decrypt_secret_key(&enc, Some(app_key)).unwrap();
+        assert_eq!(dec, kp.secret_key_b64);
+
+        // Wrong key must fail authentication tag check
+        assert!(decrypt_secret_key(&enc, Some("wrong-key")).is_err());
+        // Legacy unencrypted key still readable transparently
+        assert_eq!(decrypt_secret_key(&kp.secret_key_b64, Some(app_key)).unwrap(), kp.secret_key_b64);
     }
 }

@@ -12,7 +12,23 @@ use chrono::{DateTime, Duration, Utc};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use toc_storage::generate_user_keypair;
+use toc_storage::{decrypt_secret_key, encrypt_secret_key, generate_user_keypair};
+
+fn app_encryption_key() -> Option<String> {
+    std::env::var("APP_ENCRYPTION_KEY")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+pub fn key_encryption_enabled() -> bool {
+    app_encryption_key().is_some()
+}
+
+fn protect_secret_key(secret_b64: &str) -> String {
+    let key = app_encryption_key();
+    encrypt_secret_key(secret_b64, key.as_deref()).unwrap_or_else(|_| secret_b64.to_string())
+}
 
 use crate::repo::UserRecord;
 use crate::routes::AppState;
@@ -290,7 +306,7 @@ pub async fn dev_email_login(
                 github_handle: None,
                 display_name: display,
                 arweave_pubkey: kp.public_key_b64,
-                encrypted_key_blob: kp.secret_key_b64,
+                encrypted_key_blob: protect_secret_key(&kp.secret_key_b64),
                 created_at: Utc::now(),
             };
             match state.repo.upsert_user(rec).await {
@@ -453,7 +469,7 @@ pub async fn magic_link_callback(
                 github_handle: None,
                 display_name: display,
                 arweave_pubkey: kp.public_key_b64,
-                encrypted_key_blob: kp.secret_key_b64,
+                encrypted_key_blob: protect_secret_key(&kp.secret_key_b64),
                 created_at: Utc::now(),
             };
             match state.repo.upsert_user(rec).await {
@@ -497,12 +513,22 @@ pub async fn export_signing_key(
             Json(serde_json::json!({ "error": "Sign in to export your open-data signing key." })),
         );
     };
+    let key = app_encryption_key();
+    let secret_key_b64 = match decrypt_secret_key(&user.encrypted_key_blob, key.as_deref()) {
+        Ok(s) => s,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": e.to_string() })),
+            );
+        }
+    };
     (
         StatusCode::OK,
         Json(serde_json::json!({
             "key_type": "ed25519",
             "public_key_b64": user.arweave_pubkey,
-            "secret_key_b64": user.encrypted_key_blob,
+            "secret_key_b64": secret_key_b64,
             "note": "Keep this secret key safe. It proves cryptographic authorship of your toctracker.com open-data records."
         })),
     )
@@ -630,7 +656,7 @@ pub async fn x_oauth_callback(
                 github_handle: None,
                 display_name: display.to_string(),
                 arweave_pubkey: kp.public_key_b64,
-                encrypted_key_blob: kp.secret_key_b64,
+                encrypted_key_blob: protect_secret_key(&kp.secret_key_b64),
                 created_at: Utc::now(),
             };
             match state.repo.upsert_user(rec).await {
@@ -755,7 +781,7 @@ pub async fn github_oauth_callback(
                 github_handle: Some(format!("@{login}")),
                 display_name: display.to_string(),
                 arweave_pubkey: kp.public_key_b64,
-                encrypted_key_blob: kp.secret_key_b64,
+                encrypted_key_blob: protect_secret_key(&kp.secret_key_b64),
                 created_at: Utc::now(),
             };
             match state.repo.upsert_user(rec).await {

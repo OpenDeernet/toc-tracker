@@ -1,11 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, Database, ExternalLink, FileCode2, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Check, Copy, Database, ExternalLink, FileCode2, Layers, ShieldCheck } from 'lucide-react';
 
 interface HealthInfo {
   status: string;
   schema_version: number;
   storage_adapter: string;
   actors_count: number;
+}
+
+interface ArchiveRecordItem {
+  actor_handle: string;
+  display_name: string;
+  version: number;
+  arweave_tx_id?: string | null;
+  gateway_url?: string | null;
+  is_live_arweave: boolean;
+  published_at: string;
+}
+
+interface ArchiveRecordsResponse {
+  adapter: string;
+  total_snapshots: number;
+  archived_count: number;
+  records: ArchiveRecordItem[];
 }
 
 const ENDPOINTS = [
@@ -44,6 +62,11 @@ const ENDPOINTS = [
     path: '/api/v1/concepts',
     desc: 'Canonical concept registry + forked phrasings with parent_concept_id / root_concept_id lineage.',
   },
+  {
+    method: 'GET',
+    path: '/api/v1/archive/records',
+    desc: 'Live Arweave permanent transaction index mapping every actor snapshot to its verifiable arweave.net URL.',
+  },
 ];
 
 const ARWEAVE_QUERY = `{
@@ -65,6 +88,7 @@ const ARWEAVE_QUERY = `{
 
 export function OpenDataDocs() {
   const [health, setHealth] = useState<HealthInfo | null>(null);
+  const [archive, setArchive] = useState<ArchiveRecordsResponse | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://toctracker.com';
 
@@ -72,6 +96,10 @@ export function OpenDataDocs() {
     fetch('/api/v1/health')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setHealth(d))
+      .catch(() => {});
+    fetch('/api/v1/archive/records')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setArchive(d))
       .catch(() => {});
   }, []);
 
@@ -234,6 +262,62 @@ export function OpenDataDocs() {
             </div>
           ))}
         </div>
+
+        {/* Live Permanent Archive Verification Explorer */}
+        {archive && archive.records.length > 0 && (
+          <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-4 py-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--ink-primary)]">
+                <ShieldCheck className="h-4 w-4 text-emerald-700" />
+                Live Archive Verification Index
+              </div>
+              <span className="font-mono-meta text-[11px] text-[var(--ink-secondary)]">
+                {archive.archived_count} / {archive.total_snapshots} archived on Arweave ({archive.adapter})
+              </span>
+            </div>
+            <div className="max-h-72 divide-y divide-[var(--border-hairline)] overflow-y-auto text-xs">
+              {archive.records.map((rec) => (
+                <div
+                  key={rec.actor_handle}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-[var(--bg-canvas)]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/a/${rec.actor_handle}`}
+                      className="font-semibold text-[var(--ink-primary)] hover:underline"
+                    >
+                      {rec.display_name}
+                    </Link>
+                    <span className="font-mono-meta text-[10px] text-[var(--ink-muted)]">v{rec.version}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {rec.is_live_arweave && rec.gateway_url && rec.arweave_tx_id ? (
+                      <a
+                        href={rec.gateway_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-mono-meta text-[11px] font-semibold text-emerald-900 hover:bg-emerald-100"
+                      >
+                        ar://{rec.arweave_tx_id.slice(0, 8)}…{rec.arweave_tx_id.slice(-4)}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <a
+                        href={`/api/v1/actors/${encodeURIComponent(rec.actor_handle)}/export?format=json`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-subtle)] px-2.5 py-0.5 font-mono-meta text-[11px] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                      >
+                        JSON export
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Section 3: Schema & Invariants */}
