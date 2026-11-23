@@ -113,6 +113,9 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [actorHandle, setActorHandle] = useState(targetExistingHandle ?? '');
   const [actorName, setActorName] = useState('');
   const [actorRole, setActorRole] = useState('');
+  const [actorStance, setActorStance] = useState('');
+  const [actorContact, setActorContact] = useState('');
+  const [essayMarkdown, setEssayMarkdown] = useState('');
   const [actorKind, setActorKind] = useState<'individual' | 'organization'>('individual');
   const [changelogNote, setChangelogNote] = useState('');
   const [liveMatch, setLiveMatch] = useState<LiveMatchResponse | null>(null);
@@ -153,9 +156,12 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         setActorHandle(res.actor.handle);
         setActorName(res.actor.display_name);
         setActorRole(res.actor.role_or_affiliation);
+        setActorStance(res.actor.one_line_stance ?? '');
+        setActorContact(res.actor.contact_preference ?? '');
         setActorKind(res.actor.kind);
         if (claimMode !== 'wipe' && res.primary_snapshot) {
           setSummary(res.primary_snapshot.summary);
+          setEssayMarkdown(res.primary_snapshot.essay_markdown ?? '');
           setNodes(res.primary_snapshot.nodes);
           setEdges(res.primary_snapshot.edges);
           setCriteria(res.primary_snapshot.update_criteria);
@@ -454,6 +460,8 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
             display_name: actorName.trim() || cleanHandle,
             kind: actorKind,
             role_or_affiliation: actorRole.trim() || 'AI Safety Researcher',
+            one_line_stance: actorStance.trim() || undefined,
+            contact_preference: actorContact.trim() || undefined,
             authorship_status: 'self_authored',
           });
         }
@@ -469,6 +477,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         actor_handle: targetExistingHandle ?? cleanHandle,
         authorship_mode: 'self_authored',
         summary: finalSummary,
+        essay_markdown: essayMarkdown.trim() || undefined,
         changelog_note: changelogNote.trim() || undefined,
         nodes: finalNodes,
         edges,
@@ -1491,8 +1500,45 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                           </select>
                         </div>
                       </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
+                          One-line stance (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={actorStance}
+                          onChange={(e) => setActorStance(e.target.value)}
+                          placeholder="e.g. Containment protocols beat relying on perfect alignment."
+                          className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
+                          Contact preferences (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={actorContact}
+                          onChange={(e) => setActorContact(e.target.value)}
+                          placeholder="e.g. DM on X for crux debates; open to eval collabs"
+                          className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
                     </>
                   )}
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
+                      Written position in Markdown (optional — supplements the flowchart)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={essayMarkdown}
+                      onChange={(e) => setEssayMarkdown(e.target.value)}
+                      placeholder="Add nuance, caveats, or a linear narrative in Markdown (## headings, **bold**, lists, links)..."
+                      className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono-meta text-xs"
+                    />
+                  </div>
 
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">

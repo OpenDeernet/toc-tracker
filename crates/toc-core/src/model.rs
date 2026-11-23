@@ -123,6 +123,10 @@ pub struct Actor {
     pub display_name: String,
     pub kind: ActorKind,
     pub role_or_affiliation: String,
+    #[serde(default)]
+    pub one_line_stance: Option<String>,
+    #[serde(default)]
+    pub contact_preference: Option<String>,
     pub bio_url: Option<String>,
     pub avatar_initials: String,
     pub authorship_status: AuthorshipStatus,
@@ -386,6 +390,8 @@ pub struct ToCSnapshot {
     pub previous_snapshot_id: Option<String>,
     pub authorship_mode: AuthorshipMode,
     pub summary: String,
+    #[serde(default)]
+    pub essay_markdown: Option<String>,
     pub changelog_note: Option<String>,
     pub nodes: Vec<SnapshotNode>,
     pub edges: Vec<SnapshotEdge>,

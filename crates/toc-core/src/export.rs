@@ -13,13 +13,27 @@ pub fn snapshot_to_markdown(
     if !actor.role_or_affiliation.is_empty() {
         md.push_str(&format!("*{}*\n\n", actor.role_or_affiliation));
     }
+    if let Some(stance) = actor.one_line_stance.as_deref().filter(|s| !s.trim().is_empty()) {
+        md.push_str(&format!("**Stance:** {}\n\n", stance));
+    }
     md.push_str(&format!("> {}\n\n", snapshot.summary));
 
+    if let Some(contact) = actor.contact_preference.as_deref().filter(|s| !s.trim().is_empty()) {
+        md.push_str(&format!("- **Contact:** {}\n", contact));
+    }
     if let Some(tx) = &snapshot.arweave_tx_id {
-        md.push_str(&format!("- **Permanent Open Record:** `ar://{}`\n", tx));
+        if !tx.starts_with("seed_") && !tx.starts_with("local_") {
+            md.push_str(&format!("- **Permanent Arweave Record:** https://arweave.net/{}\n", tx));
+        }
     }
     md.push_str(&format!("- **Published:** {}\n", snapshot.published_at.format("%Y-%m-%d")));
     md.push_str(&format!("- **Authorship:** {:?}\n\n", actor.authorship_status));
+
+    if let Some(essay) = snapshot.essay_markdown.as_deref().filter(|s| !s.trim().is_empty()) {
+        md.push_str("## In Their Own Words\n\n");
+        md.push_str(essay.trim());
+        md.push_str("\n\n---\n\n");
+    }
 
     for stage in Stage::all() {
         let active_nodes: Vec<&SnapshotNode> = snapshot

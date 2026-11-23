@@ -110,6 +110,8 @@ export const api = {
     display_name: string;
     kind: 'individual' | 'organization';
     role_or_affiliation?: string;
+    one_line_stance?: string;
+    contact_preference?: string;
     bio_url?: string;
     authorship_status?: 'self_authored' | 'community_draft';
     tags?: string[];
@@ -117,6 +119,29 @@ export const api = {
     return apiFetch<Actor>('/api/v1/actors', {
       method: 'POST',
       body: JSON.stringify(body),
+    });
+  },
+
+  updateProfile(
+    handle: string,
+    body: {
+      display_name?: string;
+      role_or_affiliation?: string;
+      one_line_stance?: string;
+      contact_preference?: string;
+      bio_url?: string;
+    }
+  ) {
+    return apiFetch<Actor>(`/api/v1/actors/${encodeURIComponent(handle)}/profile`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  updateEssay(handle: string, essay_markdown: string, changelog_note?: string) {
+    return apiFetch<ToCSnapshot>(`/api/v1/actors/${encodeURIComponent(handle)}/essay`, {
+      method: 'POST',
+      body: JSON.stringify({ essay_markdown, changelog_note }),
     });
   },
 
@@ -131,6 +156,7 @@ export const api = {
     actor_handle: string;
     authorship_mode?: 'self_authored' | 'community_draft';
     summary: string;
+    essay_markdown?: string;
     changelog_note?: string;
     nodes: SnapshotNode[];
     edges: SnapshotEdge[];

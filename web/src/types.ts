@@ -50,6 +50,8 @@ export interface Actor {
   display_name: string;
   kind: ActorKind;
   role_or_affiliation: string;
+  one_line_stance?: string | null;
+  contact_preference?: string | null;
   bio_url?: string | null;
   avatar_initials: string;
   authorship_status: AuthorshipStatus;
@@ -143,6 +145,7 @@ export interface ToCSnapshot {
   previous_snapshot_id?: string | null;
   authorship_mode: AuthorshipMode;
   summary: string;
+  essay_markdown?: string | null;
   changelog_note?: string | null;
   nodes: SnapshotNode[];
   edges: SnapshotEdge[];

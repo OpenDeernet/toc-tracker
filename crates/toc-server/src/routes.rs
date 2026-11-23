@@ -100,6 +100,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/actors/{handle}/snapshots/{version}", get(get_actor_snapshot_version))
         .route("/actors/{handle}/export", get(export_actor))
         .route("/actors/{handle}/claim", post(claim_actor))
+        .route("/actors/{handle}/profile", post(update_actor_profile))
+        .route("/actors/{handle}/essay", post(update_actor_essay))
         .route("/actors/{handle}/criteria/{criterion_id}/status", post(update_criterion_status))
         .route("/compare", get(compare_actors))
         .route("/concepts", get(list_concepts).post(create_concept))
@@ -647,6 +649,8 @@ struct CreateActorRequest {
     display_name: String,
     kind: ActorKind,
     role_or_affiliation: Option<String>,
+    one_line_stance: Option<String>,
+    contact_preference: Option<String>,
     bio_url: Option<String>,
     authorship_status: Option<AuthorshipStatus>,
     tags: Option<Vec<String>>,
@@ -721,6 +725,14 @@ async fn create_actor(
         display_name,
         kind: req.kind,
         role_or_affiliation: req.role_or_affiliation.unwrap_or_default().trim().chars().take(160).collect(),
+        one_line_stance: req
+            .one_line_stance
+            .map(|s| s.trim().chars().take(240).collect::<String>())
+            .filter(|s| !s.is_empty()),
+        contact_preference: req
+            .contact_preference
+            .map(|s| s.trim().chars().take(180).collect::<String>())
+            .filter(|s| !s.is_empty()),
         bio_url,
         avatar_initials: if initials.is_empty() { "AI".into() } else { initials },
         authorship_status: status,
@@ -771,6 +783,7 @@ struct PublishSnapshotRequest {
     actor_handle: String,
     authorship_mode: Option<AuthorshipMode>,
     summary: String,
+    essay_markdown: Option<String>,
     changelog_note: Option<String>,
     nodes: Vec<SnapshotNode>,
     edges: Vec<SnapshotEdge>,
@@ -846,6 +859,11 @@ async fn publish_snapshot(
         previous_snapshot_id: prev.map(|s| s.id.clone()),
         authorship_mode: mode,
         summary: req.summary,
+        essay_markdown: req
+            .essay_markdown
+            .map(|s| s.trim().chars().take(40_000).collect::<String>())
+            .filter(|s| !s.is_empty())
+            .or_else(|| prev.and_then(|p| p.essay_markdown.clone())),
         changelog_note: req.changelog_note,
         nodes: req.nodes,
         edges: req.edges,
@@ -947,6 +965,128 @@ async fn claim_actor(
 
     let updated = state.repo.upsert_actor(actor).await.map_err(internal_err)?;
     Ok(Json(updated))
+}
+
+#[derive(Deserialize)]
+struct UpdateProfileRequest {
+    display_name: Option<String>,
+    role_or_affiliation: Option<String>,
+    one_line_stance: Option<String>,
+    contact_preference: Option<String>,
+    bio_url: Option<String>,
+}
+
+async fn update_actor_profile(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(handle): Path<String>,
+    Json(req): Json<UpdateProfileRequest>,
+) -> Result<Json<Actor>, (StatusCode, String)> {
+    if !state.rate_limiter.check("write_profile", &headers, 25, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Rate limit reached.".into()));
+    }
+    let user = auth::current_user(&state, &headers)
+        .await
+        .ok_or((StatusCode::UNAUTHORIZED, "Please sign in to edit your profile.".into()))?;
+
+    let mut actor = state
+        .repo
+        .get_actor_by_handle(handle.trim_start_matches('@'))
+        .await
+        .map_err(internal_err)?
+        .ok_or((StatusCode::NOT_FOUND, "Actor not found".into()))?;
+
+    let is_owner = actor.owner_user_id.as_deref() == Some(user.id.as_str());
+    if !is_owner && !is_admin_user(&user) {
+        return Err((StatusCode::FORBIDDEN, "Only the verified owner can update this profile.".into()));
+    }
+
+    if let Some(dn) = req.display_name.map(|s| s.trim().chars().take(80).collect::<String>()).filter(|s| !s.is_empty()) {
+        actor.display_name = dn;
+    }
+    if let Some(role) = req.role_or_affiliation {
+        actor.role_or_affiliation = role.trim().chars().take(160).collect();
+    }
+    if let Some(stance) = req.one_line_stance {
+        let s: String = stance.trim().chars().take(240).collect();
+        actor.one_line_stance = if s.is_empty() { None } else { Some(s) };
+    }
+    if let Some(contact) = req.contact_preference {
+        let s: String = contact.trim().chars().take(180).collect();
+        actor.contact_preference = if s.is_empty() { None } else { Some(s) };
+    }
+    if let Some(url) = req.bio_url {
+        let u = url.trim().to_string();
+        actor.bio_url = if u.starts_with("https://") || u.starts_with("http://") {
+            Some(u)
+        } else if u.is_empty() {
+            None
+        } else {
+            return Err((StatusCode::BAD_REQUEST, "Website URL must start with https:// or http://".into()));
+        };
+    }
+
+    let saved = state.repo.upsert_actor(actor).await.map_err(internal_err)?;
+    Ok(Json(saved))
+}
+
+#[derive(Deserialize)]
+struct UpdateEssayRequest {
+    essay_markdown: String,
+    changelog_note: Option<String>,
+}
+
+async fn update_actor_essay(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(handle): Path<String>,
+    Json(req): Json<UpdateEssayRequest>,
+) -> Result<Json<ToCSnapshot>, (StatusCode, String)> {
+    if !state.rate_limiter.check("write_essay", &headers, 20, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Rate limit reached.".into()));
+    }
+    let user = auth::current_user(&state, &headers)
+        .await
+        .ok_or((StatusCode::UNAUTHORIZED, "Please sign in to edit your written position.".into()))?;
+
+    let actor = state
+        .repo
+        .get_actor_by_handle(handle.trim_start_matches('@'))
+        .await
+        .map_err(internal_err)?
+        .ok_or((StatusCode::NOT_FOUND, "Actor not found".into()))?;
+
+    let is_owner = actor.owner_user_id.as_deref() == Some(user.id.as_str());
+    if !is_owner && !is_admin_user(&user) {
+        return Err((StatusCode::FORBIDDEN, "Only the verified owner can edit this written position.".into()));
+    }
+
+    let snaps = state
+        .repo
+        .list_snapshots_for_actor(&actor.id)
+        .await
+        .map_err(internal_err)?;
+    let latest = snaps
+        .first()
+        .ok_or((StatusCode::NOT_FOUND, "No snapshot found".into()))?;
+
+    let trimmed: String = req.essay_markdown.trim().chars().take(40_000).collect();
+    let mut next = latest.clone();
+    next.id = format!("snp_{}", uuid::Uuid::new_v4().simple());
+    next.version = latest.version + 1;
+    next.previous_snapshot_id = Some(latest.id.clone());
+    next.essay_markdown = if trimmed.is_empty() { None } else { Some(trimmed) };
+    next.published_at = Utc::now();
+    next.arweave_tx_id = None;
+    next.changelog_note = Some(
+        req.changelog_note
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "Updated written Theory of Change essay".into()),
+    );
+
+    let saved = state.repo.publish_snapshot(next).await.map_err(internal_err)?;
+    Ok(Json(saved))
 }
 
 async fn list_attestations(
@@ -1078,6 +1218,7 @@ async fn studio_live_match(
         previous_snapshot_id: None,
         authorship_mode: AuthorshipMode::SelfAuthored,
         summary: "Draft".into(),
+        essay_markdown: None,
         changelog_note: None,
         nodes: req.nodes,
         edges: req.edges,

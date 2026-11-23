@@ -22,6 +22,7 @@ import {
 } from '../types';
 import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
 import { InspectorDrawer } from '../components/InspectorDrawer';
+import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
 type ProfileTab = 'flowchart' | 'brief' | 'criteria' | 'changelog';
 
@@ -38,6 +39,18 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
   const [tab, setTab] = useState<ProfileTab>('flowchart');
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profName, setProfName] = useState('');
+  const [profRole, setProfRole] = useState('');
+  const [profStance, setProfStance] = useState('');
+  const [profContact, setProfContact] = useState('');
+  const [profUrl, setProfUrl] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const [editingEssay, setEditingEssay] = useState(false);
+  const [essayDraft, setEssayDraft] = useState('');
+  const [savingEssay, setSavingEssay] = useState(false);
+
   const [updatingCriterionId, setUpdatingCriterionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +82,49 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
       alert(e instanceof Error ? e.message : 'Update failed');
     } finally {
       setUpdatingCriterionId(null);
+    }
+  }
+
+  function openProfileEditor() {
+    if (!data) return;
+    setProfName(data.actor.display_name);
+    setProfRole(data.actor.role_or_affiliation);
+    setProfStance(data.actor.one_line_stance ?? '');
+    setProfContact(data.actor.contact_preference ?? '');
+    setProfUrl(data.actor.bio_url ?? '');
+    setProfileModalOpen(true);
+  }
+
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      await api.updateProfile(handle, {
+        display_name: profName,
+        role_or_affiliation: profRole,
+        one_line_stance: profStance,
+        contact_preference: profContact,
+        bio_url: profUrl,
+      });
+      setProfileModalOpen(false);
+      loadActor();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Profile update failed');
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handleSaveEssay() {
+    setSavingEssay(true);
+    try {
+      await api.updateEssay(handle, essayDraft);
+      setEditingEssay(false);
+      loadActor();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save essay');
+    } finally {
+      setSavingEssay(false);
     }
   }
 
@@ -164,21 +220,56 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 )}
               </div>
               <p className="mt-0.5 text-xs text-[var(--ink-secondary)]">{actor.role_or_affiliation}</p>
+              {actor.one_line_stance && (
+                <p className="mt-1.5 text-xs font-semibold text-[var(--ink-primary)]">
+                  Stance: <span className="font-normal text-[var(--ink-secondary)]">{actor.one_line_stance}</span>
+                </p>
+              )}
               {snapshot?.summary && (
                 <p className="mt-2 max-w-3xl text-sm text-[var(--ink-primary)]">{snapshot.summary}</p>
+              )}
+              {(actor.contact_preference || actor.bio_url) && (
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-[var(--ink-muted)]">
+                  {actor.contact_preference && (
+                    <span>
+                      <strong className="font-semibold text-[var(--ink-secondary)]">Contact:</strong>{' '}
+                      {actor.contact_preference}
+                    </span>
+                  )}
+                  {actor.bio_url && (
+                    <a
+                      href={actor.bio_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:underline"
+                    >
+                      {actor.bio_url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && (
-              <Link
-                to={`/studio?edit=${encodeURIComponent(actor.handle)}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Map
-              </Link>
+              <>
+                <button
+                  type="button"
+                  onClick={openProfileEditor}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                >
+                  Edit Profile
+                </button>
+                <Link
+                  to={`/studio?edit=${encodeURIComponent(actor.handle)}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit Map
+                </Link>
+              </>
             )}
             <Link
               to={`/compare?a=${encodeURIComponent(actor.handle)}&b=${actor.handle === 'dario-amodei' ? 'eliezer-yudkowsky' : 'dario-amodei'}`}
@@ -252,7 +343,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
           {(
             [
               ['flowchart', 'Flowchart'],
-              ['brief', 'Brief'],
+              ['brief', snapshot?.essay_markdown ? 'Written Position & Brief' : 'Brief & Essay'],
               ['criteria', `Update Criteria (${snapshot?.update_criteria.length ?? 0})`],
               ['changelog', `Changelog (${snapshots.length})`],
             ] as [ProfileTab, string][]
@@ -341,9 +432,83 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
             </div>
           )}
 
-          {/* LENS 2: EDITORIAL BRIEF / OUTLINE (Non-Flowchart Lens) */}
+          {/* LENS 2: WRITTEN ESSAY (MARKDOWN) + LINEAR BRIEF OUTLINE */}
           {tab === 'brief' && (
-            <div className="mx-auto max-w-4xl space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+            <div className="mx-auto max-w-4xl space-y-6">
+              {(snapshot.essay_markdown || isOwner) && (
+                <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+                  <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
+                    <div>
+                      <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                        Linear Written Position (Markdown)
+                      </div>
+                      <h2 className="mt-0.5 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
+                        In Their Own Words
+                      </h2>
+                    </div>
+                    {isOwner && !editingEssay && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEssayDraft(snapshot.essay_markdown ?? '');
+                          setEditingEssay(true);
+                        }}
+                        className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                      >
+                        {snapshot.essay_markdown ? 'Edit Essay' : '+ Write Essay'}
+                      </button>
+                    )}
+                  </div>
+
+                  {editingEssay ? (
+                    <div className="mt-4 space-y-3">
+                      <textarea
+                        rows={10}
+                        value={essayDraft}
+                        onChange={(e) => setEssayDraft(e.target.value)}
+                        placeholder="Write your nuanced Theory of Change in Markdown (supports ## headings, **bold**, *italic*, - bullets, > quotes, and [links](https://...))..."
+                        className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 font-mono-meta text-xs leading-relaxed text-[var(--ink-primary)] focus:border-[var(--ink-primary)] focus:outline-none"
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingEssay(false)}
+                          className="rounded-lg border border-[var(--border-hairline)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingEssay}
+                          onClick={handleSaveEssay}
+                          className="rounded-lg bg-[var(--ink-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                        >
+                          {savingEssay ? 'Saving v' + (snapshot.version + 1) + '…' : 'Save & Archive Essay'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : snapshot.essay_markdown ? (
+                    <div className="mt-4">
+                      <SimpleMarkdown content={snapshot.essay_markdown} />
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                      No long-form written essay yet. Add Markdown prose here to explain nuances, caveats, and
+                      context beyond the 5-column flowchart.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+                <div className="border-b border-[var(--border-hairline)] pb-3">
+                  <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                    Structured Chain Breakdown
+                  </div>
+                  <h2 className="mt-0.5 font-editorial text-lg font-semibold text-[var(--ink-primary)]">
+                    Step-by-Step Linear Brief
+                  </h2>
+                </div>
               {STAGES.map((stage) => {
                 const items = snapshot.nodes.filter(
                   (n) => n.stage === stage.key && (n.stance === 'active' || n.stance === 'open_crux')
@@ -411,6 +576,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
 
@@ -553,6 +719,103 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Edit Profile Modal (Owner Only) */}
+      {profileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
+          <form
+            onSubmit={handleSaveProfile}
+            className="w-full max-w-md rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xl"
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-base font-bold text-[var(--ink-primary)]">Edit Profile</h3>
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(false)}
+                className="rounded-lg p-1 text-[var(--ink-muted)] hover:bg-[var(--bg-subtle)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">Display Name</label>
+                <input
+                  type="text"
+                  required
+                  value={profName}
+                  onChange={(e) => setProfName(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                  Affiliated Organization / Role
+                </label>
+                <input
+                  type="text"
+                  value={profRole}
+                  onChange={(e) => setProfRole(e.target.value)}
+                  placeholder="Researcher, Redwood Research"
+                  className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                  One-Line Stance
+                </label>
+                <input
+                  type="text"
+                  value={profStance}
+                  onChange={(e) => setProfStance(e.target.value)}
+                  placeholder="e.g. Build containment protocols that stay safe even if models scheme."
+                  className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                  Contact Preferences (optional)
+                </label>
+                <input
+                  type="text"
+                  value={profContact}
+                  onChange={(e) => setProfContact(e.target.value)}
+                  placeholder="e.g. DMs open on X for crux debates; email for collabs"
+                  className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-secondary)]">
+                  Website / Blog URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={profUrl}
+                  onChange={(e) => setProfUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(false)}
+                className="rounded-lg border border-[var(--border-hairline)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="rounded-lg bg-[var(--ink-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {savingProfile ? 'Saving…' : 'Save Profile'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
