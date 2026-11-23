@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { GitFork, Link2, Target, Zap } from 'lucide-react';
+import { GitFork, Link2, Plus, Target, Zap } from 'lucide-react';
 import type { DiffCategory } from '../types';
 
 export interface SingleNodeData {
@@ -42,7 +42,65 @@ export interface PlaceholderNodeData {
   [key: string]: unknown;
 }
 
+export interface LaneColumnData {
+  num: number;
+  label: string;
+  width: number;
+  height: number;
+  active?: boolean;
+  editable?: boolean;
+  onAdd?: () => void;
+  [key: string]: unknown;
+}
+
 export type TocNodeData = SingleNodeData | CompareNodeData | PlaceholderNodeData;
+
+export function LaneColumnNode({ data }: NodeProps) {
+  const d = data as LaneColumnData;
+  return (
+    <div
+      className={`pointer-events-none flex flex-col overflow-hidden rounded-2xl border border-dashed transition-colors ${
+        d.active
+          ? 'border-[var(--ink-primary)]/60 bg-[var(--bg-canvas)]/84'
+          : 'border-[#B8B3A5] bg-[var(--bg-canvas)]/74'
+      }`}
+      style={{ width: d.width, height: d.height }}
+    >
+      <div
+        className={`flex items-center justify-between border-b border-dashed px-3.5 py-2.5 ${
+          d.active
+            ? 'border-[var(--ink-primary)]/35 bg-[var(--bg-subtle)]/90'
+            : 'border-[#C5C0B3] bg-[var(--bg-subtle)]/75'
+        }`}
+      >
+        <span
+          className={`font-mono-meta text-[11px] font-bold uppercase tracking-wider ${
+            d.active ? 'text-[var(--ink-primary)]' : 'text-[var(--ink-secondary)]'
+          }`}
+        >
+          {d.num}. {d.label}
+        </span>
+        {d.editable && d.onAdd && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              d.onAdd?.();
+            }}
+            title={`Add a ${d.label} node`}
+            className={`pointer-events-auto inline-flex h-5 w-5 items-center justify-center rounded-md border transition ${
+              d.active
+                ? 'border-[var(--ink-primary)] bg-[var(--ink-primary)] text-white'
+                : 'border-[#B8B3A5] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:border-[var(--ink-primary)] hover:text-[var(--ink-primary)]'
+            }`}
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TocNodeCard({ data }: NodeProps) {
   const d = data as TocNodeData;

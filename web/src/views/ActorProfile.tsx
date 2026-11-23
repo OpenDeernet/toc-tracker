@@ -181,7 +181,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
               </Link>
             )}
             <Link
-              to={`/compare?a=${encodeURIComponent(actor.handle)}&b=${actor.handle === 'redwood-research' ? 'alice-chen' : 'redwood-research'}`}
+              to={`/compare?a=${encodeURIComponent(actor.handle)}&b=${actor.handle === 'dario-amodei' ? 'eliezer-yudkowsky' : 'dario-amodei'}`}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
             >
               <GitCompare className="h-3.5 w-3.5" />
@@ -273,7 +273,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                   concepts={concepts}
                   selectedLocalId={selectedLocalId}
                   onSelectNode={(lid) => setSelectedLocalId(lid)}
-                  heightClass="h-[520px]"
+                  defaultHeight={620}
                 />
 
                 {/* Rejected Paths Rail */}

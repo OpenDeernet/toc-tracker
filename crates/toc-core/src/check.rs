@@ -258,9 +258,13 @@ mod tests {
     #[test]
     fn catches_unfalsifiable_crux_and_low_credence_bet() {
         let bundle = build_seed_bundle();
-        let alice = bundle.snapshots.iter().find(|s| s.id == "snp_alice_v3").unwrap();
+        let mut dario = bundle.snapshots.iter().find(|s| s.actor_id == "act_dario_amodei").unwrap().clone();
+        // Set an intervention node to 40% to trigger longshot_bet_dependency
+        if let Some(int_node) = dario.nodes.iter_mut().find(|n| n.stage == Stage::Intervention && n.stance == NodeStance::Active) {
+            int_node.credence = Some(Credence::numeric(40, "Testing low-credence bet dependency detection."));
+        }
         // Strip criteria to trigger unfalsifiable_crux
-        let items = run_epistemic_checks(&alice.nodes, &alice.edges, &[], &bundle.concepts, &bundle.snapshots);
+        let items = run_epistemic_checks(&dario.nodes, &dario.edges, &[], &bundle.concepts, &bundle.snapshots);
         assert!(items.iter().any(|i| i.code == "unfalsifiable_crux"));
         assert!(items.iter().any(|i| i.code == "longshot_bet_dependency"));
     }
@@ -270,10 +274,10 @@ mod tests {
         let bundle = build_seed_bundle();
         let m = find_similar_concepts(
             Stage::Bottleneck,
-            "Behavioral evals fail to detect scheming",
+            "Alignment science is lagging behind capabilities",
             &bundle.concepts,
         );
         assert!(!m.is_empty());
-        assert_eq!(m[0].concept.id, "cpt_evals_miss_scheming");
+        assert_eq!(m[0].concept.id, "cpt_root_alignment_behind");
     }
 }

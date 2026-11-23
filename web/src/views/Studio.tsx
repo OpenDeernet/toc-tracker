@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -30,6 +30,7 @@ import {
   type SnapshotEdge,
   type SnapshotNode,
   type Stage,
+  type StressTestResult,
   type StudioSuggestion,
   type UpdateCriterion,
 } from '../types';
@@ -121,6 +122,8 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [liveMatch, setLiveMatch] = useState<LiveMatchResponse | null>(null);
   const [lintChecks, setLintChecks] = useState<EpistemicCheckItem[]>([]);
   const [showLinter, setShowLinter] = useState(false);
+  const [stressTest, setStressTest] = useState<StressTestResult | null>(null);
+  const [stressLoading, setStressLoading] = useState(false);
   const [similarMatches, setSimilarMatches] = useState<SimilarConceptMatch[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -213,6 +216,51 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
     }, 250);
     return () => clearTimeout(timer);
   }, [draftTitle, currentStage.key, forkParentId]);
+
+  async function handleRunDeepStressTest() {
+    if (nodes.length === 0) return;
+    setStressLoading(true);
+    try {
+      const res = await api.studioStressTest(nodes, edges, criteria);
+      setStressTest(res);
+      setShowLinter(true);
+    } catch (e) {
+      setAiNotice(e instanceof Error ? e.message : 'Stress-test failed');
+    } finally {
+      setStressLoading(false);
+    }
+  }
+
+  async function addHiddenAssumptionAsPremise(title: string, why: string) {
+    try {
+      const created = await api.createConcept({
+        stage: 'premise',
+        title,
+        description: why,
+      });
+      setConceptsMap((prev) => ({ ...prev, [created.id]: created }));
+      addNodeForConcept(created, 'premise');
+    } catch (e) {
+      setAiNotice(e instanceof Error ? e.message : 'Could not add premise');
+    }
+  }
+
+  function addSuggestedCriterion(trigger: string, timeframe: string | null | undefined, pivot: string) {
+    setCriteria((prev) => {
+      const hasBlank = prev.length === 1 && !prev[0].trigger.trim() && !prev[0].pivot_action.trim();
+      const nextItem: UpdateCriterion = {
+        id: `uc_st_${Date.now()}`,
+        target_local_id: nodes.find((n) => n.is_load_bearing_crux)?.local_id ?? nodes[0]?.local_id ?? null,
+        trigger,
+        timeframe: timeframe ?? null,
+        pivot_action: pivot,
+        status: 'watching',
+        evidence_urls: [],
+      };
+      return hasBlank ? [nextItem] : [...prev, nextItem];
+    });
+    setStep(4);
+  }
 
   function loadArchetype(arch: Archetype) {
     setSummary(arch.summary);
@@ -532,7 +580,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {lintChecks.length > 0 && step >= 2 && (
+          {nodes.length >= 2 && step >= 2 && (
             <button
               type="button"
               onClick={() => setShowLinter((o) => !o)}
@@ -543,7 +591,9 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
-              {lintChecks.length} {lintChecks.length === 1 ? 'check' : 'checks'}
+              {lintChecks.length > 0
+                ? `${lintChecks.length} ${lintChecks.length === 1 ? 'check' : 'checks'}`
+                : 'Stress-test'}
             </button>
           )}
           {!targetExistingHandle && (
@@ -580,21 +630,33 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         </div>
       </div>
 
-      {/* Silent Epistemic Graph Linter Tray (Opt-in, Dismissible) */}
-      {showLinter && lintChecks.length > 0 && (
+      {/* Silent Epistemic Graph Linter + Socratic Stress-Test Tray (Opt-in, Dismissible) */}
+      {showLinter && (lintChecks.length > 0 || nodes.length >= 2) && (
         <div className="mb-4 rounded-2xl border border-amber-300/90 bg-[var(--bg-surface)] p-4">
-          <div className="mb-2.5 flex items-center justify-between">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono-meta text-[11px] font-bold uppercase tracking-wider text-amber-900">
-              Epistemic Stress-Test ({lintChecks.length})
+              Epistemic Stress-Test {lintChecks.length > 0 ? `(${lintChecks.length})` : ''}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowLinter(false)}
-              className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
-            >
-              Hide
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRunDeepStressTest}
+                disabled={stressLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ink-primary)] bg-[var(--ink-primary)] px-2.5 py-1 text-[11px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                <Sparkles className="h-3 w-3 text-amber-300" />
+                {stressLoading ? 'Analyzing…' : stressTest ? 'Re-run Deep Stress-Test' : 'Run Deep Stress-Test'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLinter(false)}
+                className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+              >
+                Hide
+              </button>
+            </div>
           </div>
+          {lintChecks.length > 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
             {lintChecks.map((item) => (
               <div
@@ -642,6 +704,94 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
               </div>
             ))}
           </div>
+          )}
+
+          {stressTest && (
+            <div className="mt-3 space-y-2.5 border-t border-[var(--border-hairline)] pt-3">
+              <div className="flex items-center justify-between">
+                <span className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                  Deep Stress-Test · {stressTest.used_llm ? `${stressTest.provider} (${stressTest.model})` : 'Field Graph Analysis'}
+                </span>
+              </div>
+              <div className="grid gap-2.5 md:grid-cols-3">
+                {stressTest.hidden_assumptions.map((ha, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col justify-between rounded-xl border border-indigo-200/80 bg-indigo-50/40 p-3 text-xs"
+                  >
+                    <div>
+                      <span className="font-mono-meta text-[10px] font-bold uppercase text-indigo-800">
+                        Hidden Assumption
+                      </span>
+                      <div className="mt-1 font-semibold text-[var(--ink-primary)]">{ha.title}</div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-[var(--ink-secondary)]">
+                        {ha.why_it_matters}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addHiddenAssumptionAsPremise(ha.title, ha.why_it_matters)}
+                      className="mt-2.5 self-start rounded-md border border-indigo-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-indigo-900 hover:bg-indigo-50"
+                    >
+                      + Add as Premise
+                    </button>
+                  </div>
+                ))}
+
+                {stressTest.steelman_objection && (
+                  <div className="flex flex-col justify-between rounded-xl border border-rose-200/80 bg-rose-50/40 p-3 text-xs">
+                    <div>
+                      <span className="font-mono-meta text-[10px] font-bold uppercase text-rose-800">
+                        Steelman Objection · {stressTest.steelman_objection.from_perspective}
+                      </span>
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--ink-primary)]">
+                        {stressTest.steelman_objection.argument}
+                      </p>
+                    </div>
+                    {stressTest.steelman_objection.rival_handle && (
+                      <Link
+                        to={`/a/${stressTest.steelman_objection.rival_handle}`}
+                        target="_blank"
+                        className="mt-2.5 inline-block text-[10px] font-semibold text-rose-800 underline"
+                      >
+                        Inspect rival map →
+                      </Link>
+                    )}
+                  </div>
+                )}
+
+                {stressTest.suggested_criterion && (
+                  <div className="flex flex-col justify-between rounded-xl border border-amber-200/80 bg-amber-50/40 p-3 text-xs">
+                    <div>
+                      <span className="font-mono-meta text-[10px] font-bold uppercase text-amber-900">
+                        Suggested Falsifier
+                      </span>
+                      <p className="mt-1 text-[11px] text-[var(--ink-primary)]">
+                        <strong>IF:</strong> {stressTest.suggested_criterion.trigger}
+                        {stressTest.suggested_criterion.timeframe ? ` (${stressTest.suggested_criterion.timeframe})` : ''}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--ink-secondary)]">
+                        <strong>THEN:</strong> {stressTest.suggested_criterion.pivot_action}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        addSuggestedCriterion(
+                          stressTest.suggested_criterion!.trigger,
+                          stressTest.suggested_criterion!.timeframe,
+                          stressTest.suggested_criterion!.pivot_action
+                        )
+                      }
+                      className="mt-2.5 self-start rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-amber-950 hover:bg-amber-50"
+                    >
+                      + Add Criterion
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1472,7 +1622,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
               onSelectEdge={setSelectedEdgeId}
               onUpdateEdgeRelation={handleUpdateEdgeRelation}
               onDeleteEdge={handleDeleteEdge}
-              heightClass="h-[640px]"
+              defaultHeight={660}
             />
 
             {liveMatch?.closest_actor_name && liveMatch.overlap_pct > 0 && !selectedEdgeId && (

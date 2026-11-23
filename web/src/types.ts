@@ -190,12 +190,22 @@ export interface DiffEdge {
   note?: string | null;
 }
 
+export interface EarliestSplit {
+  stage: Stage;
+  cluster_id: string;
+  title: string;
+  actor_a_position: string;
+  actor_b_position: string;
+  sentence: string;
+}
+
 export interface DiffSummary {
   shared_ground_count: number;
   crux_disagreement_count: number;
   unaddressed_count: number;
   premise_bottleneck_overlap_pct: number;
   headline: string;
+  earliest_split?: EarliestSplit | null;
 }
 
 export interface DiffResult {
@@ -379,4 +389,81 @@ export interface EpistemicCheckItem {
 export interface SimilarConceptMatch {
   concept: Concept;
   similarity: number;
+}
+
+export interface NeglectedBottleneck {
+  root_concept_id: string;
+  title: string;
+  believer_count: number;
+  mitigator_count: number;
+  mean_score: number;
+  gap_score: number;
+  believers: ActorStanceChip[];
+  mitigators: ActorStanceChip[];
+}
+
+export interface FaultLinePair {
+  actor_a_handle: string;
+  actor_a_name: string;
+  actor_b_handle: string;
+  actor_b_name: string;
+  shared_ground_count: number;
+  disagreement_count: number;
+  shared_premise_title?: string | null;
+  top_disagreement_title: string;
+  earliest_split_sentence?: string | null;
+}
+
+export interface HiddenAllyPair {
+  actor_a_handle: string;
+  actor_a_name: string;
+  actor_a_tag: string;
+  actor_b_handle: string;
+  actor_b_name: string;
+  actor_b_tag: string;
+  shared_ground_count: number;
+  shared_titles: string[];
+}
+
+export interface UnfalsifiableHotspot {
+  root_concept_id: string;
+  title: string;
+  stage: Stage;
+  actor_count: number;
+  actors_with_criteria: number;
+}
+
+export interface FieldIntelligence {
+  total_actors: number;
+  total_concepts: number;
+  neglected_bottlenecks: NeglectedBottleneck[];
+  fault_lines: FaultLinePair[];
+  hidden_allies: HiddenAllyPair[];
+  unfalsifiable_hotspots: UnfalsifiableHotspot[];
+}
+
+export interface HiddenAssumption {
+  title: string;
+  why_it_matters: string;
+}
+
+export interface SteelmanObjection {
+  from_perspective: string;
+  argument: string;
+  rival_handle?: string | null;
+}
+
+export interface SuggestedCriterion {
+  trigger: string;
+  timeframe?: string | null;
+  pivot_action: string;
+}
+
+export interface StressTestResult {
+  used_llm: boolean;
+  provider: string;
+  model: string;
+  hidden_assumptions: HiddenAssumption[];
+  steelman_objection?: SteelmanObjection | null;
+  suggested_criterion?: SuggestedCriterion | null;
 }

@@ -37,7 +37,7 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2 text-[17px] font-bold tracking-tight text-[var(--ink-primary)]">
-              <span>toc.open</span>
+              <span>toctracker.com</span>
               <span className="rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2 py-0.5 font-mono-meta text-[10px] font-medium uppercase tracking-wider text-[var(--ink-muted)]">
                 beta
               </span>

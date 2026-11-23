@@ -28,7 +28,7 @@ export function ExploreHome() {
     Promise.all([
       api.listActors(),
       api.listCruxes(),
-      api.compare('alice-chen', 'redwood-research').catch(() => null),
+      api.compare('dario-amodei', 'eliezer-yudkowsky').catch(() => null),
     ])
       .then(([a, c, diff]) => {
         setActors(a);
@@ -86,7 +86,7 @@ export function ExploreHome() {
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            to="/compare?a=alice-chen&b=redwood-research"
+            to="/compare?a=dario-amodei&b=eliezer-yudkowsky"
             className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-primary)] transition hover:bg-[var(--bg-subtle)]"
           >
             <GitCompare className="h-4 w-4" />
@@ -123,7 +123,7 @@ export function ExploreHome() {
                 {featuredDiff.diff.summary.headline}
               </span>
               <Link
-                to="/compare?a=alice-chen&b=redwood-research"
+                to="/compare?a=dario-amodei&b=eliezer-yudkowsky"
                 className="font-semibold text-[var(--ink-primary)] hover:underline"
               >
                 Full comparison →
@@ -141,7 +141,7 @@ export function ExploreHome() {
               actorBFull={featuredDiff.actor_b.display_name}
               selectedClusterId={selectedClusterId}
               onSelectCluster={(cid) => setSelectedClusterId((prev) => (prev === cid ? null : cid))}
-              heightClass="h-[480px]"
+              defaultHeight={580}
             />
             {selectedDiffNode && (
               <CompareInspectorDrawer

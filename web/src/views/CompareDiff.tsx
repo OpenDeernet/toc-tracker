@@ -15,8 +15,8 @@ type CompareLens = 'flowchart' | 'matrix' | 'split';
 
 export function CompareDiff() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const handleA = searchParams.get('a') || 'alice-chen';
-  const handleB = searchParams.get('b') || 'redwood-research';
+  const handleA = searchParams.get('a') || 'dario-amodei';
+  const handleB = searchParams.get('b') || 'eliezer-yudkowsky';
 
   const [actors, setActors] = useState<ActorCard[]>([]);
   const [data, setData] = useState<CompareResponse | null>(null);
@@ -157,42 +157,68 @@ export function CompareDiff() {
           </div>
         </div>
 
-        {/* Plain-English Summary Strip */}
+        {/* Plain-English Summary Strip + Earliest Split Diagnostic */}
         {data && (
-          <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-[var(--border-hairline)] pt-3 text-xs">
-            <span className="rounded-full bg-[var(--bg-subtle)] px-3 py-1 font-semibold text-[var(--ink-primary)]">
-              Both agree on {data.diff.summary.shared_ground_count}
-            </span>
-            {data.diff.summary.crux_disagreement_count > 0 && (
-              <span className="rounded-full bg-[var(--semantic-disagree-bg)] px-3 py-1 font-semibold text-[var(--semantic-disagree-text)]">
-                Disagree on {data.diff.summary.crux_disagreement_count}
+          <div className="mt-3.5 space-y-2.5 border-t border-[var(--border-hairline)] pt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[var(--bg-subtle)] px-3 py-1 font-semibold text-[var(--ink-primary)]">
+                Both agree on {data.diff.summary.shared_ground_count}
               </span>
-            )}
-            {directDisagreements.map((d) => {
-              const active = focusClusterId === d.cluster_id;
-              return (
+              {data.diff.summary.crux_disagreement_count > 0 && (
+                <span className="rounded-full bg-[var(--semantic-disagree-bg)] px-3 py-1 font-semibold text-[var(--semantic-disagree-text)]">
+                  Disagree on {data.diff.summary.crux_disagreement_count}
+                </span>
+              )}
+              {directDisagreements.map((d) => {
+                const active = focusClusterId === d.cluster_id;
+                return (
+                  <button
+                    key={d.cluster_id}
+                    onClick={() => {
+                      setFocusClusterId((prev) => (prev === d.cluster_id ? null : d.cluster_id));
+                      setSelectedClusterId(d.cluster_id);
+                    }}
+                    className={`rounded-full border px-3 py-1 font-semibold transition ${
+                      active
+                        ? 'border-rose-600 bg-rose-600 text-white'
+                        : 'border-rose-200 bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-rose-400'
+                    }`}
+                  >
+                    Focus: {d.canonical_title}
+                  </button>
+                );
+              })}
+              {focusClusterId && (
                 <button
-                  key={d.cluster_id}
-                  onClick={() => {
-                    setFocusClusterId((prev) => (prev === d.cluster_id ? null : d.cluster_id));
-                    setSelectedClusterId(d.cluster_id);
-                  }}
-                  className={`rounded-full border px-3 py-1 font-semibold transition ${
-                    active
-                      ? 'border-rose-600 bg-rose-600 text-white'
-                      : 'border-rose-200 bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-rose-400'
-                  }`}
+                  onClick={() => setFocusClusterId(null)}
+                  className="text-xs font-medium text-[var(--ink-muted)] underline"
                 >
-                  Focus: {d.canonical_title}
+                  Show all
                 </button>
-              );
-            })}
-            {focusClusterId && (
+              )}
+            </div>
+
+            {data.diff.summary.earliest_split && (
               <button
-                onClick={() => setFocusClusterId(null)}
-                className="text-xs font-medium text-[var(--ink-muted)] underline"
+                type="button"
+                onClick={() => {
+                  const cid = data.diff.summary.earliest_split!.cluster_id;
+                  setSelectedClusterId(cid);
+                  setFocusClusterId((prev) => (prev === cid ? null : cid));
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2 text-left transition hover:border-[var(--ink-primary)]/40"
               >
-                Show all
+                <div className="flex items-center gap-2 text-xs text-[var(--ink-secondary)]">
+                  <span className="rounded bg-[var(--ink-primary)] px-1.5 py-0.5 font-mono-meta text-[10px] font-bold uppercase text-white">
+                    Earliest split
+                  </span>
+                  <span className="font-medium text-[var(--ink-primary)]">
+                    {data.diff.summary.earliest_split.sentence}
+                  </span>
+                </div>
+                <span className="shrink-0 font-mono-meta text-[10px] text-[var(--ink-muted)]">
+                  Click to isolate →
+                </span>
               </button>
             )}
           </div>
@@ -220,7 +246,7 @@ export function CompareDiff() {
                 spotlightClusterId={focusClusterId}
                 selectedClusterId={selectedClusterId}
                 onSelectCluster={(cid) => setSelectedClusterId(cid)}
-                heightClass="h-[560px]"
+                defaultHeight={660}
               />
               {selectedDiffNode && (
                 <CompareInspectorDrawer
@@ -347,7 +373,7 @@ export function CompareDiff() {
                   edges={data.snapshot_a.edges}
                   updateCriteria={data.snapshot_a.update_criteria}
                   concepts={data.concepts}
-                  heightClass="h-[360px]"
+                  defaultHeight={460}
                 />
               </div>
               <div>
@@ -363,7 +389,7 @@ export function CompareDiff() {
                   edges={data.snapshot_b.edges}
                   updateCriteria={data.snapshot_b.update_criteria}
                   concepts={data.concepts}
-                  heightClass="h-[360px]"
+                  defaultHeight={460}
                 />
               </div>
             </div>

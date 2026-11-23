@@ -103,6 +103,8 @@ async fn main() -> anyhow::Result<()> {
         repo,
         storage,
         oauth_states: auth::OAuthStateStore::default(),
+        magic_links: auth::MagicLinkStore::default(),
+        rate_limiter: routes::RateLimiter::default(),
         web_dist_dir,
         public_base_url,
     });
@@ -110,7 +112,31 @@ async fn main() -> anyhow::Result<()> {
     let app = build_router(state);
     let addr = format!("0.0.0.0:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    info!("toc.open server listening on http://localhost:{port}");
-    axum::serve(listener, app).await?;
+    info!("toctracker.com server listening on http://localhost:{port}");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        if let Ok(mut sig) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            sig.recv().await;
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+    info!("Received shutdown signal, draining active requests...");
 }

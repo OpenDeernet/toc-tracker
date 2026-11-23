@@ -1,6 +1,5 @@
 # Rust
 /target
-Cargo.lock
 
 # Frontend
 web/node_modules
@@ -11,3 +10,11 @@ web/.vite
 # Env & OS
 .env
 .DS_Store
+
+# Private seed research pack notes (only sanitized seed/seed-bundle.json is committed)
+seed/profiles/
+seed/all-profiles-*.md
+seed/index.csv
+seed/README.md
+seed/shared-phrases.md
+!seed/seed-bundle.json

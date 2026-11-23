@@ -654,8 +654,8 @@ async fn extract_via_openai_compat(
         }));
     if provider_name == "openrouter" {
         req = req
-            .header("HTTP-Referer", "https://toc.open")
-            .header("X-Title", "toc.open");
+            .header("HTTP-Referer", "https://toctracker.com")
+            .header("X-Title", "toctracker.com");
     }
 
     let resp = req.send().await?;
@@ -823,6 +823,389 @@ fn extract_heuristic_multi(
     }
 }
 
+// ============================================================================
+// Socratic AI Stress-Tester (Hidden Assumptions, Steelman Objection, Criterion)
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HiddenAssumption {
+    pub title: String,
+    pub why_it_matters: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteelmanObjection {
+    pub from_perspective: String,
+    pub argument: String,
+    pub rival_handle: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SuggestedCriterion {
+    pub trigger: String,
+    pub timeframe: Option<String>,
+    pub pivot_action: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StressTestResult {
+    pub used_llm: bool,
+    pub provider: String,
+    pub model: String,
+    pub hidden_assumptions: Vec<HiddenAssumption>,
+    pub steelman_objection: Option<SteelmanObjection>,
+    pub suggested_criterion: Option<SuggestedCriterion>,
+}
+
+pub async fn stress_test_map(
+    nodes: &[SnapshotNode],
+    edges: &[SnapshotEdge],
+    criteria: &[UpdateCriterion],
+    concepts: &[Concept],
+    actors: &[Actor],
+    field_snapshots: &[ToCSnapshot],
+) -> StressTestResult {
+    let cmap: HashMap<&str, &Concept> = concepts.iter().map(|c| (c.id.as_str(), c)).collect();
+    let provider = detect_provider();
+
+    if !matches!(provider, LlmProvider::LocalHeuristic) {
+        if let Ok(res) = stress_test_with_llm(&provider, nodes, edges, criteria, &cmap).await {
+            return res;
+        }
+    }
+
+    stress_test_deterministic(nodes, criteria, &cmap, actors, field_snapshots)
+}
+
+async fn stress_test_with_llm(
+    provider: &LlmProvider,
+    nodes: &[SnapshotNode],
+    edges: &[SnapshotEdge],
+    criteria: &[UpdateCriterion],
+    cmap: &HashMap<&str, &Concept>,
+) -> anyhow::Result<StressTestResult> {
+    let mut lines = Vec::new();
+    for n in nodes {
+        let title = cmap.get(n.concept_id.as_str()).map(|c| c.title.as_str()).unwrap_or(&n.concept_id);
+        let cred = n.credence.as_ref().map(|c| c.display_pill()).unwrap_or_else(|| "-".into());
+        lines.push(format!(
+            "- [{} | {:?} | cred: {} | crux: {}] {}",
+            n.stage.as_str(),
+            n.stance,
+            cred,
+            n.is_load_bearing_crux,
+            title
+        ));
+    }
+    let crit_lines: Vec<String> = criteria
+        .iter()
+        .map(|u| format!("- IF {} THEN {}", u.trigger, u.pivot_action))
+        .collect();
+
+    let prompt = format!(
+        r#"Stress-test this AI Safety Theory of Change like a sharp, charitable LessWrong peer reviewer.
+Be concise, specific, and zero-fluff.
+
+THEORY OF CHANGE ({} edges):
+{}
+
+CURRENT UPDATE CRITERIA:
+{}
+
+RETURN STRICT JSON ONLY:
+{{
+  "hidden_assumptions": [
+    {{ "title": "concise unstated premise <=90 chars", "why_it_matters": "1 crisp sentence explaining why their bet fails if this is false" }}
+  ],
+  "steelman_objection": {{
+    "from_perspective": "e.g. Pause/Halt advocate or AI Control researcher",
+    "argument": "2 crisp sentences giving the strongest non-strawman critique of this chain"
+  }},
+  "suggested_criterion": {{
+    "trigger": "concrete observable evidence that would falsify their key crux",
+    "timeframe": "e.g. by Q4 2027",
+    "pivot_action": "specific change in bet or credence"
+  }}
+}}"#,
+        edges.len(),
+        lines.join("\n"),
+        if crit_lines.is_empty() { "(none yet)".into() } else { crit_lines.join("\n") }
+    );
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+
+    let (raw, prov_name, model_name) = match provider {
+        LlmProvider::OpenRouter { api_key, model } => {
+            let resp = client
+                .post("https://openrouter.ai/api/v1/chat/completions")
+                .bearer_auth(api_key)
+                .header("HTTP-Referer", "https://toctracker.com")
+                .header("X-Title", "toctracker.com")
+                .json(&serde_json::json!({
+                    "model": model,
+                    "response_format": { "type": "json_object" },
+                    "temperature": 0.3,
+                    "messages": [
+                        { "role": "system", "content": "You are a rigorous AI Safety epistemologist. Output strict JSON only." },
+                        { "role": "user", "content": prompt }
+                    ]
+                }))
+                .send()
+                .await?;
+            if !resp.status().is_success() {
+                anyhow::bail!("OpenRouter stress-test error {}", resp.status());
+            }
+            let val: serde_json::Value = resp.json().await?;
+            let txt = val["choices"][0]["message"]["content"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("missing content"))?
+                .to_string();
+            (txt, "openrouter", model.as_str())
+        }
+        LlmProvider::OpenAI { api_key, model } => {
+            let resp = client
+                .post("https://api.openai.com/v1/chat/completions")
+                .bearer_auth(api_key)
+                .json(&serde_json::json!({
+                    "model": model,
+                    "response_format": { "type": "json_object" },
+                    "temperature": 0.3,
+                    "messages": [
+                        { "role": "system", "content": "You are a rigorous AI Safety epistemologist. Output strict JSON only." },
+                        { "role": "user", "content": prompt }
+                    ]
+                }))
+                .send()
+                .await?;
+            if !resp.status().is_success() {
+                anyhow::bail!("OpenAI stress-test error {}", resp.status());
+            }
+            let val: serde_json::Value = resp.json().await?;
+            let txt = val["choices"][0]["message"]["content"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("missing content"))?
+                .to_string();
+            (txt, "openai", model.as_str())
+        }
+        LlmProvider::Anthropic { api_key, model } => {
+            let resp = client
+                .post("https://api.anthropic.com/v1/messages")
+                .header("x-api-key", api_key)
+                .header("anthropic-version", "2023-06-01")
+                .json(&serde_json::json!({
+                    "model": model,
+                    "max_tokens": 1200,
+                    "temperature": 0.3,
+                    "system": "You are a rigorous AI Safety epistemologist. Output strict JSON only.",
+                    "messages": [{ "role": "user", "content": prompt }]
+                }))
+                .send()
+                .await?;
+            if !resp.status().is_success() {
+                anyhow::bail!("Anthropic stress-test error {}", resp.status());
+            }
+            let val: serde_json::Value = resp.json().await?;
+            let txt = val["content"][0]["text"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("missing content"))?
+                .to_string();
+            (txt, "anthropic", model.as_str())
+        }
+        LlmProvider::LocalHeuristic => anyhow::bail!("no llm"),
+    };
+
+    let trimmed = raw.trim();
+    let json_str = if trimmed.starts_with("```") {
+        trimmed
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim()
+    } else {
+        trimmed
+    };
+    let v: serde_json::Value = serde_json::from_str(json_str)?;
+
+    let hidden_assumptions: Vec<HiddenAssumption> = v["hidden_assumptions"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    Some(HiddenAssumption {
+                        title: item["title"].as_str()?.trim().chars().take(100).collect(),
+                        why_it_matters: item["why_it_matters"].as_str()?.trim().to_string(),
+                    })
+                })
+                .take(2)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let steelman_objection = v["steelman_objection"].as_object().and_then(|o| {
+        Some(SteelmanObjection {
+            from_perspective: o.get("from_perspective")?.as_str()?.trim().to_string(),
+            argument: o.get("argument")?.as_str()?.trim().to_string(),
+            rival_handle: None,
+        })
+    });
+
+    let suggested_criterion = v["suggested_criterion"].as_object().and_then(|o| {
+        Some(SuggestedCriterion {
+            trigger: o.get("trigger")?.as_str()?.trim().to_string(),
+            timeframe: o
+                .get("timeframe")
+                .and_then(|t| t.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            pivot_action: o.get("pivot_action")?.as_str()?.trim().to_string(),
+        })
+    });
+
+    Ok(StressTestResult {
+        used_llm: true,
+        provider: prov_name.to_string(),
+        model: model_name.to_string(),
+        hidden_assumptions,
+        steelman_objection,
+        suggested_criterion,
+    })
+}
+
+fn stress_test_deterministic(
+    nodes: &[SnapshotNode],
+    _criteria: &[UpdateCriterion],
+    cmap: &HashMap<&str, &Concept>,
+    actors: &[Actor],
+    field_snapshots: &[ToCSnapshot],
+) -> StressTestResult {
+    let my_roots: HashSet<&str> = nodes
+        .iter()
+        .filter(|n| matches!(n.stance, NodeStance::Active | NodeStance::OpenCrux))
+        .map(|n| {
+            cmap.get(n.concept_id.as_str())
+                .map(|c| c.root_concept_id.as_str())
+                .unwrap_or(n.concept_id.as_str())
+        })
+        .collect();
+
+    let my_interventions: Vec<&str> = nodes
+        .iter()
+        .filter(|n| n.stage == Stage::Intervention && matches!(n.stance, NodeStance::Active))
+        .map(|n| {
+            cmap.get(n.concept_id.as_str())
+                .map(|c| c.title.as_str())
+                .unwrap_or(&n.concept_id)
+        })
+        .collect();
+
+    let mut hidden_assumptions = Vec::new();
+    let combined_int = my_interventions.join(" ").to_lowercase();
+
+    if combined_int.contains("interpretability") || combined_int.contains("probe") || combined_int.contains("white-box") {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "Models cannot obfuscate deceptive reasoning from internal probes".into(),
+            why_it_matters: "If gradient pressure or situational awareness hides deception in polysemantic representations, white-box monitoring degrades silently.".into(),
+        });
+    } else if combined_int.contains("pause") || combined_int.contains("halt") || combined_int.contains("moratorium") {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "International verification can detect covert frontier training runs".into(),
+            why_it_matters: "Without reliable compute verification, a moratorium selects for the least cooperative labs or states.".into(),
+        });
+    } else if combined_int.contains("eval") || combined_int.contains("audit") {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "Dangerous capabilities show up cleanly on pre-deployment evaluations".into(),
+            why_it_matters: "If sandbagging or post-deployment scaffolding unlocks dangerous capabilities only in the wild, release gates miss the real risk.".into(),
+        });
+    } else if combined_int.contains("control") {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "Human red-teams can match or bound worst-case untrusted model strategies".into(),
+            why_it_matters: "AI Control relies on monitoring protocols remaining reliable as models outpace human oversight.".into(),
+        });
+    } else {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "Safety progress compounds fast enough before irreversible capability thresholds".into(),
+            why_it_matters: "If recursive self-improvement arrives before your intervention matures, downstream bets never get time to pay off.".into(),
+        });
+    }
+
+    if !my_roots.contains("cpt_root_racing") {
+        hidden_assumptions.push(HiddenAssumption {
+            title: "Leading labs won't defect under competitive pressure".into(),
+            why_it_matters: "Many safety plans break if commercial or geopolitical racing forces deployment ahead of safety verification.".into(),
+        });
+    }
+
+    // Find a real rival in the 26-profile dataset who explicitly REJECTED one of our active intervention roots!
+    let actor_map: HashMap<&str, &Actor> = actors.iter().map(|a| (a.id.as_str(), a)).collect();
+    let mut steelman = None;
+    for snap in field_snapshots {
+        for n in &snap.nodes {
+            if matches!(n.stance, NodeStance::Rejected | NodeStance::Deprioritized) {
+                let root = cmap
+                    .get(n.concept_id.as_str())
+                    .map(|c| c.root_concept_id.as_str())
+                    .unwrap_or(n.concept_id.as_str());
+                if my_roots.contains(root) {
+                    if let Some(rival) = actor_map.get(snap.actor_id.as_str()) {
+                        let arg = n
+                            .note
+                            .as_deref()
+                            .map(|s| s.trim_start_matches(|c: char| c == '.' || c == ':' || c.is_whitespace()).to_string())
+                            .filter(|s| s.len() > 24)
+                            .unwrap_or_else(|| {
+                                format!(
+                                    "{} explicitly rejects this path in their Theory of Change and bets on an opposing strategy.",
+                                    rival.display_name
+                                )
+                            });
+                        steelman = Some(SteelmanObjection {
+                            from_perspective: format!("{} (from dataset)", rival.display_name),
+                            argument: arg,
+                            rival_handle: Some(rival.handle.clone()),
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+        if steelman.is_some() {
+            break;
+        }
+    }
+
+    if steelman.is_none() {
+        steelman = Some(SteelmanObjection {
+            from_perspective: "Skeptical peer reviewer".into(),
+            argument: "Even if your upstream premises hold, why does this specific intervention outperform rival approaches on margin per researcher-year? Adding one explicitly rejected alternative sharpens the crux.".into(),
+            rival_handle: None,
+        });
+    }
+
+    let crux_title = nodes
+        .iter()
+        .find(|n| n.is_load_bearing_crux)
+        .or_else(|| nodes.iter().find(|n| n.stage == Stage::Intervention))
+        .and_then(|n| cmap.get(n.concept_id.as_str()).map(|c| c.title.clone()))
+        .unwrap_or_else(|| "this core intervention".into());
+
+    StressTestResult {
+        used_llm: false,
+        provider: "graph-heuristic".into(),
+        model: "field-dataset".into(),
+        hidden_assumptions,
+        steelman_objection: steelman,
+        suggested_criterion: Some(SuggestedCriterion {
+            trigger: format!(
+                "Two independent evaluations show \"{crux_title}\" fails to catch realistic deceptive or high-autonomy failure modes"
+            ),
+            timeframe: Some("by Q4 2027".into()),
+            pivot_action: "Drop credence below 30% and shift active work toward a stronger containment or governance bet".into(),
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -850,7 +1233,7 @@ mod tests {
             { "temp_id": "new_1", "stage": "bet", "title": "Eliciting latent knowledge research", "description": "Find internal beliefs.", "parent_concept_id": null }
           ],
           "nodes": [
-            { "local_id": "n1", "concept_id": "cpt_tai_2032", "stage": "premise", "stance": "active", "is_load_bearing_crux": false, "band": "high", "percent": null, "quote": "TAI likely this decade.", "source_label": "LW", "source_url": "https://lesswrong.com/1" },
+            { "local_id": "n1", "concept_id": "cpt_root_timelines", "stage": "premise", "stance": "active", "is_load_bearing_crux": false, "band": "high", "percent": null, "quote": "TAI likely this decade.", "source_label": "LW", "source_url": "https://lesswrong.com/1" },
             { "local_id": "n2", "concept_id": "new_1", "stage": "bet", "stance": "active", "is_load_bearing_crux": true, "band": null, "percent": null, "quote": "Focus on ELK.", "source_label": "ARC", "source_url": "https://alignment.org" }
           ],
           "edges": [

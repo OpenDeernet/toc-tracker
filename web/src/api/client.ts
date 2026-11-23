@@ -11,6 +11,7 @@ import type {
   EpistemicCheckItem,
   ExtractedDraft,
   FieldCruxSummary,
+  FieldIntelligence,
   LiveMatchResponse,
   OwnedActorLink,
   PublicUser,
@@ -19,6 +20,7 @@ import type {
   SnapshotNode,
   SourceDocumentInput,
   Stage,
+  StressTestResult,
   StudioSuggestion,
   ToCSnapshot,
   UpdateCriterion,
@@ -95,6 +97,10 @@ export const api = {
     return apiFetch<FieldCruxSummary[]>('/api/v1/cruxes');
   },
 
+  fieldIntelligence() {
+    return apiFetch<FieldIntelligence>('/api/v1/intelligence/field');
+  },
+
   listArchetypes() {
     return apiFetch<Archetype[]>('/api/v1/archetypes');
   },
@@ -168,6 +174,13 @@ export const api = {
     });
   },
 
+  studioStressTest(nodes: SnapshotNode[], edges: SnapshotEdge[], update_criteria: UpdateCriterion[]) {
+    return apiFetch<StressTestResult>('/api/v1/studio/stress-test', {
+      method: 'POST',
+      body: JSON.stringify({ nodes, edges, update_criteria }),
+    });
+  },
+
   studioSimilar(stage: Stage, title: string) {
     return apiFetch<SimilarConceptMatch[]>('/api/v1/studio/similar', {
       method: 'POST',
@@ -197,8 +210,16 @@ export const api = {
     return apiFetch<{
       x_oauth_enabled: boolean;
       github_oauth_enabled: boolean;
+      magic_link_enabled: boolean;
       dev_email_login_enabled: boolean;
     }>('/api/v1/auth/providers');
+  },
+
+  requestMagicLink(body: { email: string; display_name?: string; x_handle?: string; next?: string }) {
+    return apiFetch<{ ok: boolean; message: string }>('/api/v1/auth/magic-link', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 
   devLogin(body: { email: string; display_name?: string; x_handle?: string }) {

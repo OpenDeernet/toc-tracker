@@ -104,7 +104,7 @@ pub fn render_actor_og_png(
   <rect width="1200" height="630" fill="#FAF9F6"/>
   <rect x="0" y="0" width="1200" height="72" fill="#FFFFFF"/>
   <line x1="0" y1="72" x2="1200" y2="72" stroke="#E4E2DC" stroke-width="1"/>
-  <text x="56" y="46" font-size="24" font-weight="700" fill="#18181B">toc.open</text>
+  <text x="56" y="46" font-size="24" font-weight="700" fill="#18181B">toctracker.com</text>
   <text x="1020" y="44" font-size="15" font-family="monospace" fill="#71717A">v{ver} · Open Data</text>
 
   <text x="56" y="138" font-size="38" font-weight="700" fill="#18181B">{name}</text>
@@ -144,7 +144,7 @@ pub fn render_compare_og_png(
   <rect width="1200" height="630" fill="#FAF9F6"/>
   <rect x="0" y="0" width="1200" height="72" fill="#FFFFFF"/>
   <line x1="0" y1="72" x2="1200" y2="72" stroke="#E4E2DC" stroke-width="1"/>
-  <text x="56" y="46" font-size="24" font-weight="700" fill="#18181B">toc.open</text>
+  <text x="56" y="46" font-size="24" font-weight="700" fill="#18181B">toctracker.com</text>
   <text x="960" y="44" font-size="15" font-family="monospace" fill="#71717A">CRUX COMPARISON</text>
 
   <rect x="56" y="112" width="460" height="72" rx="14" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2.5"/>
@@ -171,7 +171,7 @@ pub fn render_compare_og_png(
   <text x="106" y="366" font-size="14" font-family="monospace" font-weight="700" fill="#9F1239">MAIN DISAGREEMENT</text>
   <text x="88" y="432" font-size="34" font-weight="700" fill="#18181B">{top_crux}</text>
   <text x="88" y="488" font-size="21" fill="#52525B">{headline}</text>
-  <text x="88" y="534" font-size="16" font-family="monospace" fill="#71717A">Compare positions, credences &amp; update criteria at toc.open</text>
+  <text x="88" y="534" font-size="16" font-family="monospace" fill="#71717A">Compare positions, credences &amp; update criteria at toctracker.com</text>
 </svg>"##,
         name_a = xml_escape(&truncate(&actor_a.display_name, 26)),
         name_b = xml_escape(&truncate(&actor_b.display_name, 30)),

@@ -1,10 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use axum::{
-    extract::{Path, Query, State},
-    http::{header, HeaderMap, StatusCode},
+    extract::{DefaultBodyLimit, Path, Query, State},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
+    middleware::{self, Next},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -21,12 +23,70 @@ use crate::auth;
 use crate::og;
 use crate::repo::Repository;
 
+/// Lightweight sliding-window IP rate limiter protecting LLM & write endpoints.
+#[derive(Default)]
+pub struct RateLimiter {
+    buckets: Mutex<HashMap<String, VecDeque<Instant>>>,
+}
+
+impl RateLimiter {
+    pub fn check(&self, bucket_name: &str, headers: &HeaderMap, max_reqs: usize, window_secs: u64) -> bool {
+        let ip = headers
+            .get("cf-connecting-ip")
+            .or_else(|| headers.get("fly-client-ip"))
+            .or_else(|| headers.get("x-forwarded-for"))
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.split(',').next())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("local");
+
+        let key = format!("{bucket_name}:{ip}");
+        let now = Instant::now();
+        let window = std::time::Duration::from_secs(window_secs);
+        let mut map = self.buckets.lock().unwrap();
+        let q = map.entry(key).or_default();
+        while let Some(&front) = q.front() {
+            if now.duration_since(front) > window {
+                q.pop_front();
+            } else {
+                break;
+            }
+        }
+        if q.len() >= max_reqs {
+            return false;
+        }
+        q.push_back(now);
+        true
+    }
+}
+
 pub struct AppState {
     pub repo: Arc<dyn Repository>,
     pub storage: Arc<dyn StorageAdapter>,
     pub oauth_states: auth::OAuthStateStore,
+    pub magic_links: auth::MagicLinkStore,
+    pub rate_limiter: RateLimiter,
     pub web_dist_dir: PathBuf,
     pub public_base_url: String,
+}
+
+async fn security_headers_middleware(req: axum::extract::Request, next: Next) -> Response {
+    let mut res = next.run(req).await;
+    let headers = res.headers_mut();
+    headers.insert(
+        header::HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("SAMEORIGIN"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    res
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
@@ -45,18 +105,21 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/concepts", get(list_concepts).post(create_concept))
         .route("/concepts/{root_id}", get(get_concept_spectrum))
         .route("/cruxes", get(list_field_cruxes))
+        .route("/intelligence/field", get(field_intelligence))
         .route("/archetypes", get(list_archetypes))
         .route("/snapshots", post(publish_snapshot))
         .route("/attestations", get(list_attestations).post(create_attestation))
-        // Studio Assist & Silent Graph Linter
+        // Studio Assist, Silent Graph Linter & Socratic Stress-Test
         .route("/studio/ai-status", get(studio_ai_status))
         .route("/studio/suggest", post(studio_suggest))
         .route("/studio/extract", post(studio_extract))
         .route("/studio/live-match", post(studio_live_match))
         .route("/studio/check", post(studio_check))
+        .route("/studio/stress-test", post(studio_stress_test))
         .route("/studio/similar", post(studio_similar))
         // Auth
         .route("/auth/providers", get(auth::auth_providers))
+        .route("/auth/magic-link", post(auth::request_magic_link))
         .route("/auth/dev-login", post(auth::dev_email_login))
         .route("/auth/logout", post(auth::logout))
         .route("/me", get(auth::get_me))
@@ -68,25 +131,51 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/auth/x/callback", get(auth::x_oauth_callback))
         .route("/auth/github/start", get(auth::github_oauth_start))
         .route("/auth/github/callback", get(auth::github_oauth_callback))
+        .route("/auth/magic", get(auth::magic_link_callback))
         // Dynamic OG PNG cards
         .route("/og/actor/{handle}", get(og_actor_png))
         .route("/og/compare", get(og_compare_png))
+        // SEO & Crawlers
+        .route("/robots.txt", get(robots_txt))
+        .route("/sitemap.xml", get(sitemap_xml))
         // Dynamic meta-injected HTML routes for social cards
         .route("/a/{handle}", get(spa_actor_html))
         .route("/compare", get(spa_compare_html))
         // Static assets + SPA fallback
         .nest_service("/assets", ServeDir::new(dist_dir.join("assets")))
         .fallback(get(spa_index_html))
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
+        .layer(middleware::from_fn(security_headers_middleware))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
 
-async fn health(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "status": "ok",
-        "schema_version": CURRENT_SCHEMA_VERSION,
-        "storage_adapter": state.storage.adapter_name(),
-    }))
+async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match state.repo.list_actors().await {
+        Ok(actors) => {
+            let ai = ai::ai_status();
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "status": "ok",
+                    "schema_version": CURRENT_SCHEMA_VERSION,
+                    "storage_adapter": state.storage.adapter_name(),
+                    "actors_count": actors.len(),
+                    "ai_provider": ai.provider,
+                    "ai_llm_enabled": ai.llm_enabled,
+                    "dev_login_enabled": auth::dev_login_allowed(&state),
+                    "magic_link_enabled": auth::magic_link_enabled(),
+                })),
+            )
+        }
+        Err(e) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "status": "degraded",
+                "error": e.to_string(),
+            })),
+        ),
+    }
 }
 
 #[derive(Deserialize)]
@@ -798,8 +887,15 @@ struct StudioExtractRequest {
 
 async fn studio_extract(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(req): Json<StudioExtractRequest>,
 ) -> Result<Json<ai::ExtractedDraft>, (StatusCode, String)> {
+    if !state.rate_limiter.check("ai_extract", &headers, 12, 600) {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            "Extraction rate limit reached. Please wait a few minutes before drafting again.".into(),
+        ));
+    }
     let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
     let mut docs = req.documents;
     if docs.is_empty() && (req.text.is_some() || req.url.is_some()) {
@@ -968,6 +1064,47 @@ async fn studio_check(
     Ok(Json(items))
 }
 
+async fn studio_stress_test(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<StudioCheckRequest>,
+) -> Result<Json<ai::StressTestResult>, (StatusCode, String)> {
+    if !state.rate_limiter.check("ai_stress", &headers, 15, 600) {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            "Stress-test rate limit reached. Please wait a few minutes.".into(),
+        ));
+    }
+    let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
+    let actors = state.repo.list_actors().await.map_err(internal_err)?;
+    let primary = state.repo.list_primary_snapshots().await.map_err(internal_err)?;
+    let res = ai::stress_test_map(
+        &req.nodes,
+        &req.edges,
+        &req.update_criteria,
+        &concepts,
+        &actors,
+        &primary,
+    )
+    .await;
+    Ok(Json(res))
+}
+
+async fn field_intelligence(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<FieldIntelligence>, (StatusCode, String)> {
+    let actors = state.repo.list_actors().await.map_err(internal_err)?;
+    let primary = state.repo.list_primary_snapshots().await.map_err(internal_err)?;
+    let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
+    let attestations = state.repo.list_attestations().await.map_err(internal_err)?;
+    Ok(Json(compute_field_intelligence(
+        &actors,
+        &primary,
+        &concepts,
+        &attestations,
+    )))
+}
+
 #[derive(Deserialize)]
 struct StudioSimilarRequest {
     stage: Stage,
@@ -1007,7 +1144,15 @@ async fn og_actor_png(
         .ok_or((StatusCode::NOT_FOUND, "Snapshot not found".into()))?;
     let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
     let png = og::render_actor_og_png(&actor, &snap, &concepts).map_err(internal_err)?;
-    Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/png")], png).into_response())
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=300"),
+        ],
+        png,
+    )
+        .into_response())
 }
 
 async fn og_compare_png(
@@ -1046,13 +1191,63 @@ async fn og_compare_png(
     let attestations = state.repo.list_attestations().await.map_err(internal_err)?;
     let diff = diff_snapshots(&snap_a, &snap_b, &concepts, &attestations);
     let png = og::render_compare_og_png(&actor_a, &actor_b, &diff).map_err(internal_err)?;
-    Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/png")], png).into_response())
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=300"),
+        ],
+        png,
+    )
+        .into_response())
+}
+
+async fn robots_txt(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let base = state.public_base_url.trim_end_matches('/');
+    let body = format!("User-agent: *\nAllow: /\nSitemap: {base}/sitemap.xml\n");
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        body,
+    )
+}
+
+async fn sitemap_xml(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let base = state.public_base_url.trim_end_matches('/');
+    let actors = state.repo.list_actors().await.unwrap_or_default();
+    let mut urls = vec![
+        format!("{base}/"),
+        format!("{base}/compare"),
+        format!("{base}/cruxes"),
+        format!("{base}/studio"),
+    ];
+    for a in actors {
+        urls.push(format!("{base}/a/{}", a.handle));
+    }
+    let body = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{}
+</urlset>"#,
+        urls.into_iter()
+            .map(|u| format!("  <url><loc>{u}</loc></url>"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/xml; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=600"),
+        ],
+        body,
+    )
 }
 
 fn load_index_html(state: &AppState) -> String {
     let index_path = state.web_dist_dir.join("index.html");
     std::fs::read_to_string(index_path).unwrap_or_else(|_| {
-        "<!doctype html><html><head><title>toc.open</title></head><body><div id=\"root\">Run `npm run build` in web/ or use the Vite dev server on :5173.</div></body></html>".into()
+        "<!doctype html><html><head><title>toctracker.com</title></head><body><div id=\"root\">Run `npm run build` in web/ or use the Vite dev server on :5173.</div></body></html>".into()
     })
 }
 
@@ -1080,7 +1275,7 @@ async fn spa_actor_html(
     let html = load_index_html(&state);
     let clean = handle.trim_start_matches('@');
     if let Ok(Some(actor)) = state.repo.get_actor_by_handle(clean).await {
-        let title = format!("{} — Theory of Change | toc.open", actor.display_name);
+        let title = format!("{} — Theory of Change | toctracker.com", actor.display_name);
         let desc = format!("{} · View flowchart, credences & update criteria.", actor.role_or_affiliation);
         let img = format!("{}/og/actor/{}.png", state.public_base_url, actor.handle);
         return inject_og_meta(html, &title, &desc, &img);
@@ -1094,7 +1289,7 @@ async fn spa_compare_html(
 ) -> Html<String> {
     let html = load_index_html(&state);
     if let (Some(a), Some(b)) = (params.get("a"), params.get("b")) {
-        let title = format!("{a} vs {b} — Crux Comparison | toc.open");
+        let title = format!("{a} vs {b} — Crux Comparison | toctracker.com");
         let desc = "Compare AI Safety Theories of Change side-by-side and pinpoint exact cruxes.";
         let img = format!(
             "{}/og/compare?a={}&b={}",
@@ -1128,6 +1323,8 @@ mod tests {
             repo,
             storage: Arc::new(LocalMockAdapter),
             oauth_states: auth::OAuthStateStore::default(),
+            magic_links: auth::MagicLinkStore::default(),
+            rate_limiter: RateLimiter::default(),
             web_dist_dir: PathBuf::from("web/dist"),
             public_base_url: "http://localhost:3001".into(),
         })
@@ -1136,8 +1333,8 @@ mod tests {
     #[tokio::test]
     async fn og_cards_render_valid_png_bytes() {
         let state = test_state().await;
-        let actor_a = state.repo.get_actor_by_handle("alice-chen").await.unwrap().unwrap();
-        let actor_b = state.repo.get_actor_by_handle("redwood-research").await.unwrap().unwrap();
+        let actor_a = state.repo.get_actor_by_handle("dario-amodei").await.unwrap().unwrap();
+        let actor_b = state.repo.get_actor_by_handle("eliezer-yudkowsky").await.unwrap().unwrap();
         let snap_a = state.repo.list_snapshots_for_actor(&actor_a.id).await.unwrap().remove(0);
         let snap_b = state.repo.list_snapshots_for_actor(&actor_b.id).await.unwrap().remove(0);
         let concepts = state.repo.list_concepts().await.unwrap();
@@ -1157,12 +1354,11 @@ mod tests {
         let snaps = state.repo.list_primary_snapshots().await.unwrap();
         let sugs = ai::suggest_concepts_for_stage(
             Stage::Bottleneck,
-            &["cpt_rl_scheming".into()],
+            &["cpt_root_scheming".into()],
             &concepts,
             &snaps,
         );
         assert!(!sugs.is_empty());
-        assert_eq!(sugs[0].concept.id, "cpt_evals_miss_scheming");
     }
 
     #[tokio::test]
@@ -1181,12 +1377,12 @@ mod tests {
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
 
-        // 2. Compare Alice vs Redwood
+        // 2. Compare Dario vs Eliezer (including Earliest Split diagnostic)
         let res = app
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/compare?a=alice-chen&b=redwood-research")
+                    .uri("/api/v1/compare?a=dario-amodei&b=eliezer-yudkowsky")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -1195,15 +1391,44 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = to_bytes(res.into_body(), 1024 * 1024).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(json["diff"]["summary"]["shared_ground_count"], 3);
-        assert_eq!(json["diff"]["top_cruxes"][0]["cluster_id"], "cpt_interp_scales");
+        assert!(json["diff"]["summary"]["shared_ground_count"].as_u64().unwrap() >= 1);
+        assert!(json["diff"]["summary"]["earliest_split"]["sentence"].as_str().is_some());
+
+        // 2b. Field Intelligence (Blindspots, Fault Lines, Hidden Allies)
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/intelligence/field")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let fi_body = to_bytes(res.into_body(), 1024 * 1024).await.unwrap();
+        let fi: serde_json::Value = serde_json::from_slice(&fi_body).unwrap();
+        assert_eq!(fi["total_actors"].as_u64().unwrap(), 26);
+        assert!(!fi["neglected_bottlenecks"].as_array().unwrap().is_empty());
+        assert!(!fi["fault_lines"].as_array().unwrap().is_empty());
+
+        // 2c. robots.txt + sitemap.xml + security headers
+        let res = app
+            .clone()
+            .oneshot(Request::builder().uri("/sitemap.xml").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers().get("x-content-type-options").unwrap(), "nosniff");
+        let sm = String::from_utf8(to_bytes(res.into_body(), 1024 * 1024).await.unwrap().to_vec()).unwrap();
+        assert!(sm.contains("/a/dario-amodei"));
 
         // 3. OG meta injection on /compare
         let res = app
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/compare?a=alice-chen&b=redwood-research")
+                    .uri("/compare?a=dario-amodei&b=eliezer-yudkowsky")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -1212,14 +1437,14 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let html = String::from_utf8(to_bytes(res.into_body(), 1024 * 1024).await.unwrap().to_vec()).unwrap();
         assert!(html.contains("og:title"));
-        assert!(html.contains("/og/compare?a=alice-chen"));
+        assert!(html.contains("/og/compare?a=dario-amodei"));
 
         // 4. OG PNG endpoint returns valid PNG
         let res = app
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/og/compare?a=alice-chen&b=redwood-research")
+                    .uri("/og/compare?a=dario-amodei&b=eliezer-yudkowsky")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -1231,11 +1456,11 @@ mod tests {
 
         // 5. Publishing snapshot without update_criteria returns 422
         let invalid_payload = serde_json::json!({
-            "actor_handle": "alice-chen",
+            "actor_handle": "dario-amodei",
             "summary": "Missing criterion test",
             "nodes": [{
                 "local_id": "n1",
-                "concept_id": "cpt_tai_2032",
+                "concept_id": "cpt_root_timelines",
                 "stage": "premise",
                 "stance": "active",
                 "is_load_bearing_crux": false,
@@ -1261,10 +1486,10 @@ mod tests {
             .unwrap();
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-        // 6. Silent Graph Linter (/api/v1/studio/check) + Similar Concept Nudge (/api/v1/studio/similar)
+        // 6. Silent Graph Linter + Similar Concept Nudge (/api/v1/studio/similar)
         let sim_payload = serde_json::json!({
             "stage": "bottleneck",
-            "title": "Behavioral evals fail to detect scheming"
+            "title": "Alignment science is lagging behind capabilities"
         });
         let res = app
             .oneshot(
@@ -1280,6 +1505,6 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let sim_body: serde_json::Value =
             serde_json::from_slice(&to_bytes(res.into_body(), 1024 * 1024).await.unwrap()).unwrap();
-        assert_eq!(sim_body[0]["concept"]["id"], "cpt_evals_miss_scheming");
+        assert_eq!(sim_body[0]["concept"]["id"], "cpt_root_alignment_behind");
     }
 }

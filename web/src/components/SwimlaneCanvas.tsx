@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -8,7 +8,7 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { GripHorizontal, Maximize2, Minimize2, Plus, Trash2, X } from 'lucide-react';
 import {
   STAGES,
   credencePill,
@@ -20,14 +20,26 @@ import {
   type Stage,
   type UpdateCriterion,
 } from '../types';
-import { TocNodeCard, type CompareNodeData, type PlaceholderNodeData, type SingleNodeData } from './NodeCard';
+import {
+  LaneColumnNode,
+  TocNodeCard,
+  type CompareNodeData,
+  type LaneColumnData,
+  type PlaceholderNodeData,
+  type SingleNodeData,
+} from './NodeCard';
 
-const nodeTypes = { tocNode: TocNodeCard };
+const nodeTypes = {
+  tocNode: TocNodeCard,
+  laneColumn: LaneColumnNode,
+};
 
 const COL_WIDTH = 312;
+const LANE_WIDTH = 256;
 const SINGLE_ROW_HEIGHT = 176;
-const COMPARE_ROW_HEIGHT = 212;
-const TOP_OFFSET = 78;
+const COMPARE_ROW_HEIGHT = 208;
+const LANE_TOP = 16;
+const CARD_TOP_OFFSET = 76;
 const LEFT_OFFSET = 28;
 
 const EDGE_RELATIONS: { key: EdgeRelation | null; label: string }[] = [
@@ -40,21 +52,21 @@ const EDGE_RELATIONS: { key: EdgeRelation | null; label: string }[] = [
 
 function AutoFitOnResize({
   containerRef,
-  nodeCount,
+  fitKey,
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>;
-  nodeCount: number;
+  fitKey: string;
 }) {
   const { fitView } = useReactFlow();
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || nodeCount === 0) return;
+    if (!el) return;
     let rafId = 0;
     const triggerFit = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        fitView({ padding: 0.16, maxZoom: 1.02, duration: 160 });
+        fitView({ padding: 0.08, maxZoom: 1.05, duration: 160 });
       });
     };
     triggerFit();
@@ -64,7 +76,7 @@ function AutoFitOnResize({
       cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, [containerRef, fitView, nodeCount]);
+  }, [containerRef, fitView, fitKey]);
 
   return null;
 }
@@ -85,7 +97,7 @@ interface SingleCanvasProps {
   onSelectEdge?: (edgeId: string | null) => void;
   onUpdateEdgeRelation?: (edgeId: string, relation: EdgeRelation | null) => void;
   onDeleteEdge?: (edgeId: string) => void;
-  heightClass?: string;
+  defaultHeight?: number;
 }
 
 interface CompareCanvasProps {
@@ -98,16 +110,16 @@ interface CompareCanvasProps {
   spotlightClusterId?: string | null;
   selectedClusterId?: string | null;
   onSelectCluster?: (clusterId: string) => void;
-  heightClass?: string;
+  defaultHeight?: number;
 }
 
 type SwimlaneCanvasProps = SingleCanvasProps | CompareCanvasProps;
 
 export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
-  const heightClass = props.heightClass ?? 'h-[520px]';
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
-  const { rfNodes, rfEdges, mobileByStage } = useMemo(() => {
+  const { rfNodes, rfEdges, mobileByStage, maxRows } = useMemo(() => {
     if (props.mode === 'single') {
       const activeNodes = props.nodes.filter((n) => n.stance === 'active' || n.stance === 'open_crux');
       const byStage: Record<Stage, SnapshotNode[]> = {
@@ -121,10 +133,37 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
         byStage[n.stage]?.push(n);
       }
 
-      const maxRows = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
-      const totalH = maxRows * SINGLE_ROW_HEIGHT;
+      const maxRowsVal = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
+      const totalH = maxRowsVal * SINGLE_ROW_HEIGHT;
+      const laneHeight = Math.max(360, totalH + 92);
 
       const builtNodes: Node[] = [];
+
+      // 1. World-space swimlane column frames (pan & zoom in lockstep with cards!)
+      for (const s of STAGES) {
+        const laneData: LaneColumnData = {
+          num: s.num,
+          label: s.label,
+          width: LANE_WIDTH,
+          height: laneHeight,
+          active: props.activeStage === s.key,
+          editable: Boolean(props.editable),
+          onAdd: props.onAddInStage ? () => props.onAddInStage?.(s.key) : undefined,
+        };
+        builtNodes.push({
+          id: `__lane_${s.key}`,
+          type: 'laneColumn',
+          position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH - 18, y: LANE_TOP },
+          data: laneData,
+          draggable: false,
+          selectable: false,
+          focusable: false,
+          connectable: false,
+          zIndex: -10,
+        });
+      }
+
+      // 2. Cards (or clickable placeholders in editable mode)
       for (const s of STAGES) {
         const col = byStage[s.key];
         if (col.length === 0 && props.editable) {
@@ -135,15 +174,19 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           builtNodes.push({
             id: `__placeholder_${s.key}`,
             type: 'tocNode',
-            position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: TOP_OFFSET + Math.max(0, (totalH - SINGLE_ROW_HEIGHT) / 2) },
+            position: {
+              x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH,
+              y: CARD_TOP_OFFSET + Math.max(0, (totalH - SINGLE_ROW_HEIGHT) / 2),
+            },
             data: phData,
             draggable: false,
             connectable: false,
+            zIndex: 1,
           });
           continue;
         }
         const colH = col.length * SINGLE_ROW_HEIGHT;
-        const startY = TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
+        const startY = CARD_TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
         col.forEach((n, idx) => {
           const concept = props.concepts[n.concept_id];
           const criteriaCount = props.updateCriteria.filter((u) => u.target_local_id === n.local_id).length;
@@ -173,6 +216,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * SINGLE_ROW_HEIGHT },
             data,
             draggable: false,
+            zIndex: 2,
           });
         });
       }
@@ -200,7 +244,11 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
               fontWeight: isSelected ? 700 : 500,
             },
             labelBgStyle: { fill: '#FAF9F6', fillOpacity: 0.92 },
-            style: { stroke: strokeColor, strokeWidth: isSelected ? 2.6 : 1.7, cursor: props.editable ? 'pointer' : 'default' },
+            style: {
+              stroke: strokeColor,
+              strokeWidth: isSelected ? 2.6 : 1.7,
+              cursor: props.editable ? 'pointer' : 'default',
+            },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               width: 15,
@@ -213,6 +261,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       return {
         rfNodes: builtNodes,
         rfEdges: builtEdges,
+        maxRows: maxRowsVal,
         mobileByStage: STAGES.map((s) => ({
           stage: s,
           items: byStage[s.key].map((n) => ({
@@ -264,14 +313,37 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       byStage[dn.stage]?.push(dn);
     }
 
-    const maxRows = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
-    const totalH = maxRows * COMPARE_ROW_HEIGHT;
+    const maxRowsVal = Math.max(1, ...STAGES.map((s) => byStage[s.key].length));
+    const totalH = maxRowsVal * COMPARE_ROW_HEIGHT;
+    const laneHeight = Math.max(400, totalH + 92);
 
     const builtNodes: Node[] = [];
+
+    // World-space swimlane frames locked to the cards at all pan/zoom levels
+    for (const s of STAGES) {
+      const laneData: LaneColumnData = {
+        num: s.num,
+        label: s.label,
+        width: LANE_WIDTH + 8,
+        height: laneHeight,
+      };
+      builtNodes.push({
+        id: `__lane_${s.key}`,
+        type: 'laneColumn',
+        position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH - 18, y: LANE_TOP },
+        data: laneData,
+        draggable: false,
+        selectable: false,
+        focusable: false,
+        connectable: false,
+        zIndex: -10,
+      });
+    }
+
     for (const s of STAGES) {
       const col = byStage[s.key];
       const colH = col.length * COMPARE_ROW_HEIGHT;
-      const startY = TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
+      const startY = CARD_TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
       col.forEach((dn, idx) => {
         const labelA = dn.node_a
           ? dn.node_a.credence
@@ -314,6 +386,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * COMPARE_ROW_HEIGHT },
           data,
           draggable: false,
+          zIndex: 2,
         });
       });
     }
@@ -350,6 +423,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     return {
       rfNodes: builtNodes,
       rfEdges: builtEdges,
+      maxRows: maxRowsVal,
       mobileByStage: STAGES.map((s) => ({
         stage: s,
         items: byStage[s.key].map((dn) => ({
@@ -369,6 +443,38 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     };
   }, [props]);
 
+  // Smart generous initial height that scales up automatically for dense real-world charts
+  const autoHeight = Math.min(760, Math.max(props.defaultHeight ?? 580, 320 + maxRows * 125));
+  const [customHeight, setCustomHeight] = useState<number | null>(null);
+  const effectiveHeight = customHeight ?? autoHeight;
+
+  // Escape exits fullscreen expand mode
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
+  function startVerticalResize(e: React.PointerEvent) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = containerRef.current?.getBoundingClientRect().height ?? effectiveHeight;
+
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.max(380, Math.min(1150, Math.round(startH + (ev.clientY - startY))));
+      setCustomHeight(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
   const isEditable = props.mode === 'single' && Boolean(props.editable);
   const selectedEdge =
     props.mode === 'single' && props.selectedEdgeId
@@ -376,169 +482,200 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       : null;
 
   function handleConnect(conn: Connection) {
-    if (props.mode === 'single' && props.onConnectNodes && conn.source && conn.target && conn.source !== conn.target) {
+    if (
+      props.mode === 'single' &&
+      props.onConnectNodes &&
+      conn.source &&
+      conn.target &&
+      conn.source !== conn.target
+    ) {
       props.onConnectNodes(conn.source, conn.target);
     }
   }
 
+  const fitKey = `${rfNodes.length}_${rfEdges.length}_${expanded ? 'fs' : 'norm'}`;
+
   return (
     <>
-      {/* Desktop / Tablet 5-Column Swimlane Flowchart */}
+      {expanded && (
+        <div
+          className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[1px]"
+          onClick={() => setExpanded(false)}
+        />
+      )}
+
+      {/* Desktop / Tablet Resizable + Expandable 5-Column Swimlane Flowchart */}
       <div
         ref={containerRef}
-        className={`relative hidden overflow-hidden rounded-2xl border border-[var(--border-hairline)] dot-grid-canvas md:block ${heightClass}`}
+        style={expanded ? undefined : { height: `${effectiveHeight}px` }}
+        className={`${
+          expanded ? 'fixed inset-4 z-50 shadow-2xl' : 'relative'
+        } hidden flex-col overflow-hidden rounded-2xl border border-[var(--border-hairline)] dot-grid-canvas md:flex`}
       >
-        {/* Top Bar inside Canvas: Legend (Compare or Studio) + 5 Column Headers (with + buttons in editable mode) */}
-        <div className="absolute inset-x-0 top-0 z-10 border-b border-dashed border-[var(--border-hairline)] bg-[var(--bg-canvas)]/92 backdrop-blur-[2px]">
-          {props.mode === 'compare' && (
-            <div className="flex items-center justify-between border-b border-[var(--border-hairline)]/60 px-4 py-1.5 text-[11px]">
-              <div className="flex items-center gap-4">
-                <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-a-text)]">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-a-border)]" />
-                  {props.actorAFull ?? props.actorAShort}
-                </span>
-                <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-b-text)]">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-b-border)]" />
-                  {props.actorBFull ?? props.actorBShort}
-                </span>
-                <span className="inline-flex items-center gap-1.5 font-medium text-[var(--ink-secondary)]">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, var(--actor-a-border) 50%, var(--actor-b-border) 50%)',
-                    }}
-                  />
-                  Shared (dual border)
-                </span>
-              </div>
-              <span className="text-[var(--ink-muted)]">Click any card to read reasoning & update criteria</span>
+        {/* Minimal Top Utility Bar (Legend / Hint + Expand button) */}
+        <div className="z-10 flex items-center justify-between border-b border-[var(--border-hairline)]/80 bg-[var(--bg-canvas)]/92 px-4 py-2 text-[11px] backdrop-blur-[2px]">
+          {props.mode === 'compare' ? (
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-a-text)]">
+                <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-a-border)]" />
+                {props.actorAFull ?? props.actorAShort}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--actor-b-text)]">
+                <span className="h-2.5 w-2.5 rounded-full bg-[var(--actor-b-border)]" />
+                {props.actorBFull ?? props.actorBShort}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-medium text-[var(--ink-secondary)]">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--actor-a-border) 50%, var(--actor-b-border) 50%)',
+                  }}
+                />
+                Shared
+              </span>
             </div>
+          ) : isEditable ? (
+            <span className="text-[var(--ink-muted)]">
+              Click node or arrow to edit · Drag handles to connect · Click + in any column to add
+            </span>
+          ) : (
+            <span className="text-[var(--ink-muted)]">
+              Click any node for quotes, reasoning & update criteria · Scroll or pinch to zoom
+            </span>
           )}
 
-          {isEditable && (
-            <div className="flex items-center justify-between border-b border-[var(--border-hairline)]/60 px-4 py-1.5 text-[11px] text-[var(--ink-muted)]">
-              <span>Click node or arrow to edit</span>
-              <span>Drag handles to connect</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-5 px-4 py-2">
-            {STAGES.map((s) => {
-              const isColActive = props.mode === 'single' && props.activeStage === s.key;
-              return (
-                <div key={s.key} className="flex items-center gap-1.5">
-                  <span
-                    className={`font-mono-meta text-[11px] font-semibold uppercase tracking-wider ${
-                      isColActive ? 'text-[var(--ink-primary)]' : 'text-[var(--ink-muted)]'
-                    }`}
-                  >
-                    {s.num}. {s.label}
-                  </span>
-                  {isEditable && props.onAddInStage && (
-                    <button
-                      type="button"
-                      onClick={() => props.onAddInStage?.(s.key)}
-                      title={`Add a ${s.label} node`}
-                      className={`inline-flex h-5 w-5 items-center justify-center rounded-md border text-[11px] transition ${
-                        isColActive
-                          ? 'border-[var(--ink-primary)] bg-[var(--ink-primary)] text-white'
-                          : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:border-[var(--ink-primary)] hover:text-[var(--ink-primary)]'
-                      }`}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            {customHeight && !expanded && (
+              <button
+                type="button"
+                onClick={() => setCustomHeight(null)}
+                className="rounded-md px-2 py-0.5 text-[10px] font-medium text-[var(--ink-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
+              >
+                Reset height
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              title={expanded ? 'Exit fullscreen (Esc)' : 'Expand viewer'}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+            >
+              {expanded ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  Close
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  Expand
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Interactive React Flow Canvas */}
-
-        <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.16, maxZoom: 1.02 }}
-          nodesDraggable={false}
-          nodesConnectable={isEditable}
-          elementsSelectable={true}
-          minZoom={0.45}
-          maxZoom={1.35}
-          onConnect={handleConnect}
-          onNodeClick={(_, node) => {
-            if (props.mode === 'single') {
-              if (node.id.startsWith('__placeholder_')) {
-                const st = node.id.replace('__placeholder_', '') as Stage;
-                props.onAddInStage?.(st);
-                return;
-              }
-              props.onSelectEdge?.(null);
-              props.onSelectNode?.(node.id);
-            } else if (props.mode === 'compare' && props.onSelectCluster) {
-              props.onSelectCluster(node.id);
-            }
-          }}
-          onEdgeClick={(_, edge) => {
-            if (props.mode === 'single' && props.editable) {
-              props.onSelectEdge?.(edge.id);
-            }
-          }}
-          onPaneClick={() => {
-            if (props.mode === 'single' && props.editable) {
-              props.onSelectEdge?.(null);
-            }
-          }}
-        >
-          <AutoFitOnResize containerRef={containerRef} nodeCount={rfNodes.length} />
-          <Controls showInteractive={false} className="!border-[var(--border-hairline)] !bg-[var(--bg-surface)] !shadow-xs" />
-        </ReactFlow>
-
-        {/* Floating Edge Editor Bar (only appears when user clicks an arrow in Studio!) */}
-        {isEditable && selectedEdge && (
-          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-[var(--ink-primary)] bg-[var(--bg-surface)] px-3 py-2 text-xs shadow-lg">
-            <span className="mr-1 font-mono-meta text-[10px] font-semibold uppercase text-[var(--ink-muted)]">
-              Arrow:
-            </span>
-            {EDGE_RELATIONS.map((rel) => {
-              const active = (selectedEdge.relation ?? null) === rel.key;
-              return (
-                <button
-                  key={rel.label}
-                  type="button"
-                  onClick={() => props.onUpdateEdgeRelation?.(selectedEdge.id, rel.key)}
-                  className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition ${
-                    active
-                      ? 'bg-[var(--ink-primary)] text-white'
-                      : 'text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]'
-                  }`}
-                >
-                  {rel.label}
-                </button>
-              );
-            })}
-            <div className="mx-1 h-4 w-px bg-[var(--border-hairline)]" />
-            <button
-              type="button"
-              onClick={() => {
-                props.onDeleteEdge?.(selectedEdge.id);
+        {/* React Flow Interactive Viewport */}
+        <div className="relative flex-1">
+          <ReactFlow
+            nodes={rfNodes}
+            edges={rfEdges}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.08, maxZoom: 1.05 }}
+            nodesDraggable={false}
+            nodesConnectable={isEditable}
+            elementsSelectable={true}
+            minZoom={0.3}
+            maxZoom={1.5}
+            onConnect={handleConnect}
+            onNodeClick={(_, node) => {
+              if (node.id.startsWith('__lane_')) return;
+              if (props.mode === 'single') {
+                if (node.id.startsWith('__placeholder_')) {
+                  const st = node.id.replace('__placeholder_', '') as Stage;
+                  props.onAddInStage?.(st);
+                  return;
+                }
                 props.onSelectEdge?.(null);
-              }}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
-            >
-              <Trash2 className="h-3 w-3" />
-              Delete
-            </button>
-            <button
-              type="button"
-              onClick={() => props.onSelectEdge?.(null)}
-              className="rounded-md p-1 text-[var(--ink-muted)] hover:bg-[var(--bg-subtle)]"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+                props.onSelectNode?.(node.id);
+              } else if (props.mode === 'compare' && props.onSelectCluster) {
+                props.onSelectCluster(node.id);
+              }
+            }}
+            onEdgeClick={(_, edge) => {
+              if (props.mode === 'single' && props.editable) {
+                props.onSelectEdge?.(edge.id);
+              }
+            }}
+            onPaneClick={() => {
+              if (props.mode === 'single' && props.editable) {
+                props.onSelectEdge?.(null);
+              }
+            }}
+          >
+            <AutoFitOnResize containerRef={containerRef} fitKey={fitKey} />
+            <Controls
+              showInteractive={false}
+              className="!border-[var(--border-hairline)] !bg-[var(--bg-surface)] !shadow-xs"
+            />
+          </ReactFlow>
+
+          {/* Floating Edge Editor Bar (only when an arrow is clicked in Studio) */}
+          {isEditable && selectedEdge && (
+            <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-[var(--ink-primary)] bg-[var(--bg-surface)] px-3 py-2 text-xs shadow-lg">
+              <span className="mr-1 font-mono-meta text-[10px] font-semibold uppercase text-[var(--ink-muted)]">
+                Arrow:
+              </span>
+              {EDGE_RELATIONS.map((rel) => {
+                const active = (selectedEdge.relation ?? null) === rel.key;
+                return (
+                  <button
+                    key={rel.label}
+                    type="button"
+                    onClick={() => props.onUpdateEdgeRelation?.(selectedEdge.id, rel.key)}
+                    className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition ${
+                      active
+                        ? 'bg-[var(--ink-primary)] text-white'
+                        : 'text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]'
+                    }`}
+                  >
+                    {rel.label}
+                  </button>
+                );
+              })}
+              <div className="mx-1 h-4 w-px bg-[var(--border-hairline)]" />
+              <button
+                type="button"
+                onClick={() => {
+                  props.onDeleteEdge?.(selectedEdge.id);
+                  props.onSelectEdge?.(null);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => props.onSelectEdge?.(null)}
+                className="rounded-md p-1 text-[var(--ink-muted)] hover:bg-[var(--bg-subtle)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Vertical Drag-to-Resize Handle */}
+        {!expanded && (
+          <div
+            onPointerDown={startVerticalResize}
+            title="Drag to resize viewer height"
+            className="group z-10 flex h-4 cursor-ns-resize items-center justify-center border-t border-[var(--border-hairline)]/80 bg-[var(--bg-surface)]/80 transition hover:bg-[var(--bg-subtle)]"
+          >
+            <GripHorizontal className="h-3.5 w-3.5 text-[var(--ink-muted)]/60 group-hover:text-[var(--ink-primary)]" />
           </div>
         )}
       </div>

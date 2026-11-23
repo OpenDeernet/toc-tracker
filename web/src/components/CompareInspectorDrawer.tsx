@@ -159,7 +159,7 @@ export function CompareInspectorDrawer({
     : [];
 
   return (
-    <aside className="flex flex-col rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs">
+    <aside className="flex max-h-[760px] flex-col overflow-y-auto rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs lg:sticky lg:top-20">
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
           {diffNode.stage}
