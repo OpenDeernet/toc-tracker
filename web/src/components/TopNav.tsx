@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { KeyRound, LogOut, Map, Plus, User } from 'lucide-react';
 import type { OwnedActorLink, PublicUser } from '../types';
@@ -15,6 +15,25 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
 
   const navItems = [
     { to: '/', label: 'Explore', active: pathname === '/' },
@@ -61,7 +80,7 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
 
           <div className="flex items-center gap-2.5">
             {user ? (
-              <div className="relative">
+              <div ref={menuRef} className="relative">
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   className="flex items-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
