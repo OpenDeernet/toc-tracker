@@ -178,14 +178,82 @@ struct PreparedDoc {
     content: String,
 }
 
+fn is_public_ip(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            let o = v4.octets();
+            let is_cgnat = o[0] == 100 && (o[1] & 0b1100_0000) == 64;
+            !(v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_broadcast()
+                || v4.is_documentation()
+                || v4.is_unspecified()
+                || v4.is_multicast()
+                || o[0] == 0
+                || is_cgnat)
+        }
+        std::net::IpAddr::V6(v6) => {
+            if let Some(mapped) = v6.to_ipv4_mapped() {
+                return is_public_ip(std::net::IpAddr::V4(mapped));
+            }
+            let seg0 = v6.segments()[0];
+            let is_ula = (seg0 & 0xfe00) == 0xfc00;
+            let is_link_local = (seg0 & 0xffc0) == 0xfe80;
+            !(v6.is_loopback() || v6.is_unspecified() || v6.is_multicast() || is_ula || is_link_local)
+        }
+    }
+}
+
+/// Blocks SSRF targets (localhost, cloud metadata, Railway internal DNS, private RFC1918 IPs).
+pub(crate) async fn is_safe_public_url(raw_url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(raw_url) else {
+        return false;
+    };
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return false;
+    }
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return false;
+    }
+    let Some(host) = parsed.host_str() else {
+        return false;
+    };
+    let lower = host.to_ascii_lowercase();
+    if lower == "localhost"
+        || lower.ends_with(".localhost")
+        || lower.ends_with(".local")
+        || lower.ends_with(".internal")
+        || lower.ends_with(".arpa")
+    {
+        return false;
+    }
+    if let Ok(ip) = host.trim_matches(['[', ']']).parse::<std::net::IpAddr>() {
+        return is_public_ip(ip);
+    }
+    let port = parsed.port_or_known_default().unwrap_or(443);
+    let Ok(addrs) = tokio::net::lookup_host((host, port)).await else {
+        return false;
+    };
+    let mut saw_any = false;
+    for addr in addrs {
+        saw_any = true;
+        if !is_public_ip(addr.ip()) {
+            return false;
+        }
+    }
+    saw_any
+}
+
 /// Multi-document quote-locked Theory of Change extractor.
-/// Fetches URLs concurrently, cleans HTML, and calls OpenRouter / Anthropic / OpenAI (or falls back to local matcher).
+/// Fetches URLs concurrently (with strict SSRF protection), cleans HTML, and calls OpenRouter / Anthropic / OpenAI (or falls back to local matcher).
 pub async fn extract_draft_from_documents(
     docs: &[SourceDocumentInput],
     concepts: &[Concept],
 ) -> ExtractedDraft {
     let fetch_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(12))
+        .redirect(reqwest::redirect::Policy::none())
         .user_agent("toctracker-extractor/0.1")
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
@@ -209,14 +277,18 @@ pub async fn extract_draft_from_documents(
         let mut text = doc.text.as_deref().unwrap_or("").trim().to_string();
         if text.len() < 80 {
             if let Some(ref url) = url_clean {
-                if let Ok(resp) = fetch_client.get(url).send().await {
-                    if resp.status().is_success() {
-                        if let Ok(body) = resp.text().await {
-                            let cleaned = html_to_readable_text(&body);
-                            if !text.is_empty() {
-                                text.push('\n');
+                if is_safe_public_url(url).await {
+                    if let Ok(resp) = fetch_client.get(url).send().await {
+                        if resp.status().is_success() {
+                            if let Ok(bytes) = resp.bytes().await {
+                                let capped = &bytes[..bytes.len().min(512 * 1024)];
+                                let body = String::from_utf8_lossy(capped);
+                                let cleaned = html_to_readable_text(&body);
+                                if !text.is_empty() {
+                                    text.push('\n');
+                                }
+                                text.push_str(&cleaned.chars().take(12_000).collect::<String>());
                             }
-                            text.push_str(&cleaned.chars().take(12_000).collect::<String>());
                         }
                     }
                 }

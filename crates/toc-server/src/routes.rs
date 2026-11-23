@@ -545,14 +545,48 @@ struct CreateConceptRequest {
     tags: Option<Vec<String>>,
 }
 
+fn is_admin_user(user: &crate::repo::UserRecord) -> bool {
+    let Ok(raw) = std::env::var("ADMIN_X_HANDLES") else {
+        return false;
+    };
+    let Some(xh) = user.x_handle.as_deref() else {
+        return false;
+    };
+    let user_norm = xh.trim().trim_start_matches('@').to_ascii_lowercase();
+    raw.split(',')
+        .map(|s| s.trim().trim_start_matches('@').to_ascii_lowercase())
+        .any(|adm| !adm.is_empty() && adm == user_norm)
+}
+
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
 async fn create_concept(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(req): Json<CreateConceptRequest>,
 ) -> Result<(StatusCode, Json<Concept>), (StatusCode, String)> {
+    if !state.rate_limiter.check("write_concept", &headers, 30, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Too many concept creations. Please slow down.".into()));
+    }
     let title = req.title.trim();
     if title.is_empty() || title.chars().count() > 140 {
         return Err((StatusCode::BAD_REQUEST, "Concept title must be 1–140 characters".into()));
     }
+    let desc: String = req.description.unwrap_or_default().chars().take(500).collect();
+    let tags: Vec<String> = req
+        .tags
+        .unwrap_or_default()
+        .into_iter()
+        .take(8)
+        .map(|t| t.trim().chars().take(32).collect())
+        .filter(|t: &String| !t.is_empty())
+        .collect();
     let concepts = state.repo.list_concepts().await.map_err(internal_err)?;
     let id = format!("cpt_{}", uuid::Uuid::new_v4().simple());
     let root_concept_id = req
@@ -567,10 +601,10 @@ async fn create_concept(
         id,
         stage: req.stage,
         title: title.to_string(),
-        description: req.description.unwrap_or_default(),
+        description: desc,
         parent_concept_id: req.parent_concept_id,
         root_concept_id,
-        tags: req.tags.unwrap_or_default(),
+        tags,
         created_by_actor_id: None,
         arweave_tx_id: None,
         created_at: Utc::now(),
@@ -623,6 +657,13 @@ async fn create_actor(
     headers: HeaderMap,
     Json(req): Json<CreateActorRequest>,
 ) -> Result<(StatusCode, Json<Actor>), (StatusCode, String)> {
+    if !state.rate_limiter.check("write_actor", &headers, 20, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Rate limit reached. Please try again shortly.".into()));
+    }
+    let user = auth::current_user(&state, &headers)
+        .await
+        .ok_or((StatusCode::UNAUTHORIZED, "Please sign in to create a Theory of Change profile.".into()))?;
+
     let handle: String = req
         .handle
         .trim()
@@ -630,6 +671,7 @@ async fn create_actor(
         .to_lowercase()
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .take(48)
         .collect();
     if handle.len() < 2 {
         return Err((StatusCode::BAD_REQUEST, "Handle must be at least 2 characters".into()));
@@ -644,54 +686,71 @@ async fn create_actor(
         return Err((StatusCode::CONFLICT, format!("Handle `@{handle}` is already taken")));
     }
 
-    let user = auth::current_user(&state, &headers).await;
-    let status = req.authorship_status.unwrap_or_else(|| {
-        if user.is_some() {
-            AuthorshipStatus::SelfAuthored
-        } else {
-            AuthorshipStatus::CommunityDraft
-        }
-    });
+    let status = match req.authorship_status {
+        Some(AuthorshipStatus::CommunityDraft) => AuthorshipStatus::CommunityDraft,
+        _ => AuthorshipStatus::SelfAuthored,
+    };
 
-    let initials: String = req
-        .display_name
+    let display_name: String = req.display_name.trim().chars().take(80).collect();
+    if display_name.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Display name is required".into()));
+    }
+    let initials: String = display_name
         .split_whitespace()
         .filter_map(|w| w.chars().next())
         .take(2)
         .collect::<String>()
         .to_uppercase();
 
+    let bio_url = req
+        .bio_url
+        .map(|s| s.trim().to_string())
+        .filter(|s| s.starts_with("https://") || s.starts_with("http://"));
+
     let actor = Actor {
         id: format!("act_{}", uuid::Uuid::new_v4().simple()),
         handle,
-        display_name: req.display_name.trim().to_string(),
+        display_name,
         kind: req.kind,
-        role_or_affiliation: req.role_or_affiliation.unwrap_or_default(),
-        bio_url: req.bio_url.filter(|s| !s.trim().is_empty()),
+        role_or_affiliation: req.role_or_affiliation.unwrap_or_default().trim().chars().take(160).collect(),
+        bio_url,
         avatar_initials: if initials.is_empty() { "AI".into() } else { initials },
         authorship_status: status,
         owner_user_id: if status == AuthorshipStatus::SelfAuthored {
-            user.as_ref().map(|u| u.id.clone())
+            Some(user.id.clone())
         } else {
             None
         },
         verified_provider: if status == AuthorshipStatus::SelfAuthored {
-            user.as_ref().and_then(|u| {
-                if u.x_handle.is_some() {
-                    Some("x".into())
-                } else if u.github_handle.is_some() {
-                    Some("github".into())
-                } else {
-                    Some("email".into())
-                }
-            })
+            if user.x_handle.is_some() {
+                Some("x".into())
+            } else if user.github_handle.is_some() {
+                Some("github".into())
+            } else {
+                Some("email".into())
+            }
         } else {
             None
         },
-        verified_handle: user.as_ref().and_then(|u| u.x_handle.clone().or_else(|| u.github_handle.clone())),
-        arweave_pubkey: user.as_ref().map(|u| u.arweave_pubkey.clone()),
+        verified_handle: if status == AuthorshipStatus::SelfAuthored {
+            user.x_handle.clone().or_else(|| user.github_handle.clone())
+        } else {
+            None
+        },
+        arweave_pubkey: if status == AuthorshipStatus::SelfAuthored {
+            Some(user.arweave_pubkey.clone())
+        } else {
+            None
+        },
         primary_snapshot_id: None,
-        tags: req.tags.unwrap_or_default(),
+        tags: req
+            .tags
+            .unwrap_or_default()
+            .into_iter()
+            .take(8)
+            .map(|t| t.trim().chars().take(32).collect())
+            .filter(|t: &String| !t.is_empty())
+            .collect(),
         created_at: Utc::now(),
     };
 
@@ -717,6 +776,19 @@ async fn publish_snapshot(
     headers: HeaderMap,
     Json(req): Json<PublishSnapshotRequest>,
 ) -> Result<(StatusCode, Json<ToCSnapshot>), (StatusCode, Json<serde_json::Value>)> {
+    if !state.rate_limiter.check("write_snapshot", &headers, 30, 600) {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(serde_json::json!({ "errors": ["Rate limit reached. Please wait a few minutes."] })),
+        ));
+    }
+    let user = auth::current_user(&state, &headers).await.ok_or_else(|| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({ "errors": ["Please sign in before publishing a Theory of Change."] })),
+        )
+    })?;
+
     let actor = state
         .repo
         .get_actor_by_handle(req.actor_handle.trim_start_matches('@'))
@@ -730,16 +802,28 @@ async fn publish_snapshot(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "errors": [e.to_string()] }))))?;
 
+    let is_owner = actor.owner_user_id.as_deref() == Some(user.id.as_str());
+    let is_admin = is_admin_user(&user);
+    if !is_admin {
+        if actor.owner_user_id.is_some() && !is_owner {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({ "errors": ["Only the verified owner can edit this Theory of Change."] })),
+            ));
+        }
+        if actor.owner_user_id.is_none() && !existing_snaps.is_empty() {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({ "errors": ["Existing community drafts are locked from direct overwrite. Claim the profile or fork it to publish your own map."] })),
+            ));
+        }
+    }
+
     let prev = existing_snaps.first();
     let next_version = prev.map(|s| s.version + 1).unwrap_or(1);
 
-    let user = auth::current_user(&state, &headers).await;
     let mode = req.authorship_mode.unwrap_or_else(|| {
-        if actor.authorship_status == AuthorshipStatus::CommunityDraft && user.is_none() {
-            AuthorshipMode::CommunityDraft
-        } else if actor.authorship_status == AuthorshipStatus::CommunityDraft
-            && actor.owner_user_id.is_none()
-        {
+        if actor.authorship_status == AuthorshipStatus::CommunityDraft && !is_owner {
             AuthorshipMode::CommunityDraft
         } else {
             AuthorshipMode::SelfAuthored
@@ -786,8 +870,11 @@ async fn claim_actor(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(handle): Path<String>,
-    Json(req): Json<ClaimActorRequest>,
+    Json(_req): Json<ClaimActorRequest>,
 ) -> Result<Json<Actor>, (StatusCode, String)> {
+    if !state.rate_limiter.check("write_claim", &headers, 10, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Too many claim attempts. Please wait a few minutes.".into()));
+    }
     let user = auth::current_user(&state, &headers)
         .await
         .ok_or((StatusCode::UNAUTHORIZED, "Please sign in first to claim a profile.".into()))?;
@@ -803,19 +890,51 @@ async fn claim_actor(
         return Err((StatusCode::CONFLICT, "This profile has already been claimed.".into()));
     }
 
+    // In production (https://), prevent profile hijacking by requiring a verified handle match (or admin).
+    let is_prod = state.public_base_url.starts_with("https://");
+    if is_prod && !is_admin_user(&user) {
+        let expected = actor
+            .verified_handle
+            .as_deref()
+            .map(|h| h.trim().trim_start_matches('@').to_ascii_lowercase());
+        let actual = user
+            .x_handle
+            .as_deref()
+            .or(user.github_handle.as_deref())
+            .map(|h| h.trim().trim_start_matches('@').to_ascii_lowercase());
+
+        match (expected, actual) {
+            (Some(exp), Some(act)) if exp == act => {}
+            (Some(exp), _) => {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    format!("To claim this profile automatically, sign in with X as @{exp}."),
+                ));
+            }
+            (None, _) => {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    "This profile doesn't have an automatic X handle linked yet — open a verification request on GitHub or DM the maintainer to claim it.".into(),
+                ));
+            }
+        }
+    }
+
     actor.authorship_status = AuthorshipStatus::Claimed;
     actor.owner_user_id = Some(user.id.clone());
     actor.arweave_pubkey = Some(user.arweave_pubkey.clone());
-    actor.verified_provider = Some(if user.x_handle.is_some() || req.verified_handle.is_some() {
+    actor.verified_provider = Some(if user.x_handle.is_some() {
         "x".into()
+    } else if user.github_handle.is_some() {
+        "github".into()
     } else {
         "email".into()
     });
-    actor.verified_handle = req
-        .verified_handle
-        .filter(|s| !s.trim().is_empty())
-        .or(user.x_handle.clone())
-        .or(user.github_handle.clone());
+    actor.verified_handle = user
+        .x_handle
+        .clone()
+        .or_else(|| user.github_handle.clone())
+        .or(actor.verified_handle);
 
     let updated = state.repo.upsert_actor(actor).await.map_err(internal_err)?;
     Ok(Json(updated))
@@ -837,8 +956,16 @@ struct CreateAttestationRequest {
 
 async fn create_attestation(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(req): Json<CreateAttestationRequest>,
 ) -> Result<(StatusCode, Json<LinkAttestation>), (StatusCode, String)> {
+    if !state.rate_limiter.check("write_attestation", &headers, 30, 600) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Rate limit reached.".into()));
+    }
+    let _user = auth::current_user(&state, &headers)
+        .await
+        .ok_or((StatusCode::UNAUTHORIZED, "Please sign in to create a concept link.".into()))?;
+
     let att = LinkAttestation {
         schema_version: CURRENT_SCHEMA_VERSION,
         id: format!("att_{}", uuid::Uuid::new_v4().simple()),
@@ -846,7 +973,7 @@ async fn create_attestation(
         target_concept_id: req.target_concept_id,
         relation: req.relation,
         attester_actor_id: None,
-        note: req.note.unwrap_or_default(),
+        note: req.note.unwrap_or_default().chars().take(400).collect(),
         arweave_tx_id: None,
         created_at: Utc::now(),
     };
@@ -1281,10 +1408,10 @@ fn inject_og_meta(html: String, title: &str, desc: &str, image_url: &str, page_u
     <meta name="twitter:description" content="{desc}" />
     <meta name="twitter:image" content="{image_url}" />
 </head>"#,
-        page_url = page_url.replace('"', "&quot;"),
-        title = title.replace('"', "&quot;"),
-        desc = desc.replace('"', "&quot;"),
-        image_url = image_url.replace('"', "&quot;"),
+        page_url = escape_html(page_url),
+        title = escape_html(title),
+        desc = escape_html(desc),
+        image_url = escape_html(image_url),
     );
     Html(html.replacen("</head>", &meta, 1))
 }
@@ -1505,7 +1632,7 @@ mod tests {
         let png = to_bytes(res.into_body(), 2 * 1024 * 1024).await.unwrap();
         assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"));
 
-        // 5. Publishing snapshot without update_criteria returns 422
+        // 5a. Unauthenticated snapshot publish returns 401
         let invalid_payload = serde_json::json!({
             "actor_handle": "dario-amodei",
             "summary": "Missing criterion test",
@@ -1535,7 +1662,100 @@ mod tests {
             )
             .await
             .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+        // 5b. Sign in (localhost dev-login), create own actor, verify 403 on seeded draft & 422 on missing criteria
+        let login_res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/auth/dev-login")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"email":"tester@example.org","display_name":"Tester"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(login_res.status(), StatusCode::OK);
+        let cookie = login_res
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+
+        // Trying to overwrite Dario's seeded community draft must fail with 403
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/snapshots")
+                    .header("content-type", "application/json")
+                    .header(header::COOKIE, &cookie)
+                    .body(Body::from(invalid_payload.to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+        // Create own actor and verify missing update_criteria returns 422
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/actors")
+                    .header("content-type", "application/json")
+                    .header(header::COOKIE, &cookie)
+                    .body(Body::from(r#"{"handle":"tester-map","display_name":"Tester","kind":"individual"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+
+        let mut own_invalid = invalid_payload.clone();
+        own_invalid["actor_handle"] = serde_json::json!("tester-map");
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/snapshots")
+                    .header("content-type", "application/json")
+                    .header(header::COOKIE, &cookie)
+                    .body(Body::from(own_invalid.to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // 5c. XSS escaping in /compare OG meta tags + SSRF URL guard
+        let xss_res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/compare?a=%22%3E%3Cscript%3Ealert(1)%3C/script%3E&b=eliezer-yudkowsky")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let xss_html = String::from_utf8(to_bytes(xss_res.into_body(), 1024 * 1024).await.unwrap().to_vec()).unwrap();
+        assert!(!xss_html.contains("<script>alert(1)</script>"));
+        assert!(xss_html.contains("&lt;script&gt;"));
+
+        assert!(!ai::is_safe_public_url("http://127.0.0.1:3001/api/v1/health").await);
+        assert!(!ai::is_safe_public_url("http://169.254.169.254/latest/meta-data").await);
+        assert!(!ai::is_safe_public_url("http://postgres.railway.internal:5432").await);
 
         // 6. Silent Graph Linter + Similar Concept Nudge (/api/v1/studio/similar)
         let sim_payload = serde_json::json!({
