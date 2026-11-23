@@ -687,7 +687,15 @@ async fn create_actor(
     }
 
     let status = match req.authorship_status {
-        Some(AuthorshipStatus::CommunityDraft) => AuthorshipStatus::CommunityDraft,
+        Some(AuthorshipStatus::CommunityDraft) => {
+            if !is_admin_user(&user) {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    "Public figure drafts are curated by maintainers to prevent impersonation. Open a GitHub issue to request a profile, or publish your own Theory of Change.".into(),
+                ));
+            }
+            AuthorshipStatus::CommunityDraft
+        }
         _ => AuthorshipStatus::SelfAuthored,
     };
 
@@ -1363,6 +1371,7 @@ async fn sitemap_xml(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         format!("{base}/"),
         format!("{base}/compare"),
         format!("{base}/cruxes"),
+        format!("{base}/data"),
         format!("{base}/studio"),
     ];
     for a in actors {

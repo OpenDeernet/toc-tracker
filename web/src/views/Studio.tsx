@@ -72,9 +72,6 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [stageIdx, setStageIdx] = useState(0);
   const currentStage = STAGES[stageIdx];
 
-  // Authoring mode
-  const [authoringMode, setAuthoringMode] = useState<'self' | 'community'>('self');
-
   // Reference catalogs
   const [archetypes, setArchetypes] = useState<Archetype[]>([]);
   const [actors, setActors] = useState<ActorCard[]>([]);
@@ -117,7 +114,6 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
   const [actorName, setActorName] = useState('');
   const [actorRole, setActorRole] = useState('');
   const [actorKind, setActorKind] = useState<'individual' | 'organization'>('individual');
-  const [communitySourceUrl, setCommunitySourceUrl] = useState('');
   const [changelogNote, setChangelogNote] = useState('');
   const [liveMatch, setLiveMatch] = useState<LiveMatchResponse | null>(null);
   const [lintChecks, setLintChecks] = useState<EpistemicCheckItem[]>([]);
@@ -424,15 +420,13 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
     (u) => u.trigger.trim().length > 0 && u.pivot_action.trim().length > 0
   ).length;
 
-  const hasAnyCitation = nodes.some((n) => n.citations.some((c) => c.url.trim().length > 0));
-
   async function handlePublish() {
     setPublishError(null);
     if (validCriteriaCount < 1) {
       setPublishError('At least one complete Update Criterion (IF + THEN) is required to publish.');
       return;
     }
-    if (authoringMode === 'self' && !user) {
+    if (!user) {
       onOpenAuth();
       return;
     }
@@ -446,25 +440,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
       return;
     }
 
-    // Attach community-draft source URL onto first node if provided at Step 5
-    let finalNodes = nodes;
-    if (authoringMode === 'community' && !hasAnyCitation) {
-      if (!communitySourceUrl.trim()) {
-        setPublishError('Please link at least one public source (post, paper, or org page) for a community draft.');
-        return;
-      }
-      finalNodes = nodes.map((n, idx) =>
-        idx === 0
-          ? {
-              ...n,
-              citations: [
-                ...n.citations,
-                { label: 'Primary Source', url: communitySourceUrl.trim(), quote: null },
-              ],
-            }
-          : n
-      );
-    }
+    const finalNodes = nodes;
 
     setPublishing(true);
     try {
@@ -478,7 +454,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
             display_name: actorName.trim() || cleanHandle,
             kind: actorKind,
             role_or_affiliation: actorRole.trim() || 'AI Safety Researcher',
-            authorship_status: authoringMode === 'self' ? 'self_authored' : 'community_draft',
+            authorship_status: 'self_authored',
           });
         }
       }
@@ -491,7 +467,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
 
       await api.publishSnapshot({
         actor_handle: targetExistingHandle ?? cleanHandle,
-        authorship_mode: authoringMode === 'self' ? 'self_authored' : 'community_draft',
+        authorship_mode: 'self_authored',
         summary: finalSummary,
         changelog_note: changelogNote.trim() || undefined,
         nodes: finalNodes,
@@ -595,30 +571,6 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                 ? `${lintChecks.length} ${lintChecks.length === 1 ? 'check' : 'checks'}`
                 : 'Stress-test'}
             </button>
-          )}
-          {!targetExistingHandle && (
-            <div className="inline-flex rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-[11px] font-semibold">
-              <button
-                onClick={() => setAuthoringMode('self')}
-                className={`rounded-md px-2.5 py-1 ${
-                  authoringMode === 'self'
-                    ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-2xs'
-                    : 'text-[var(--ink-muted)]'
-                }`}
-              >
-                My ToC
-              </button>
-              <button
-                onClick={() => setAuthoringMode('community')}
-                className={`rounded-md px-2.5 py-1 ${
-                  authoringMode === 'community'
-                    ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-2xs'
-                    : 'text-[var(--ink-muted)]'
-                }`}
-              >
-                Map Someone Else
-              </button>
-            </div>
           )}
           <button
             onClick={() => setShowAiPanel((o) => !o)}
@@ -1542,21 +1494,6 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                     </>
                   )}
 
-                  {authoringMode === 'community' && !hasAnyCitation && (
-                    <div>
-                      <label className="mb-1 block text-[11px] font-semibold text-amber-900">
-                        Backing source link (required when mapping someone else)
-                      </label>
-                      <input
-                        type="url"
-                        value={communitySourceUrl}
-                        onChange={(e) => setCommunitySourceUrl(e.target.value)}
-                        placeholder="https://lesswrong.com/... or org website"
-                        className="w-full rounded-lg border border-amber-300 bg-amber-50/40 px-2.5 py-1.5 text-xs"
-                      />
-                    </div>
-                  )}
-
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
                       Version note (optional)
@@ -1590,11 +1527,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                     className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                   >
                     <Check className="h-3.5 w-3.5" />
-                    {publishing
-                      ? 'Publishing…'
-                      : authoringMode === 'self' && !user
-                        ? 'Sign in & Publish'
-                        : 'Publish'}
+                    {publishing ? 'Publishing…' : !user ? 'Sign in & Publish' : 'Publish'}
                   </button>
                 </div>
               </div>

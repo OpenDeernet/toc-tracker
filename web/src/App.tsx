@@ -9,6 +9,7 @@ import { ActorProfile } from './views/ActorProfile';
 import { CompareDiff } from './views/CompareDiff';
 import { ConceptExplorer } from './views/ConceptExplorer';
 import { CruxesDirectory } from './views/CruxesDirectory';
+import { OpenDataDocs } from './views/OpenDataDocs';
 import { Studio } from './views/Studio';
 
 export function App() {
@@ -54,6 +55,7 @@ export function App() {
           <Route path="/compare" element={<CompareDiff />} />
           <Route path="/cruxes" element={<CruxesDirectory />} />
           <Route path="/concept/:rootId" element={<ConceptExplorer />} />
+          <Route path="/data" element={<OpenDataDocs />} />
           <Route
             path="/studio"
             element={

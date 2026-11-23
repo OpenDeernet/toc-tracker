@@ -39,6 +39,7 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
     { to: '/', label: 'Explore', active: pathname === '/' },
     { to: '/compare', label: 'Compare', active: pathname.startsWith('/compare') },
     { to: '/cruxes', label: 'Disagreements', active: pathname.startsWith('/cruxes') || pathname.startsWith('/concept') },
+    { to: '/data', label: 'Open Data', active: pathname.startsWith('/data') },
   ];
 
   async function handleExportKey() {
