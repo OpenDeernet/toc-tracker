@@ -133,6 +133,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/auth/github/callback", get(auth::github_oauth_callback))
         .route("/auth/magic", get(auth::magic_link_callback))
         // Dynamic OG PNG cards
+        .route("/og/home.png", get(og_home_png))
         .route("/og/actor/{handle}", get(og_actor_png))
         .route("/og/compare", get(og_compare_png))
         // SEO & Crawlers
@@ -1123,6 +1124,21 @@ async fn studio_similar(
 // Dynamic OG PNG & Meta-Injected SPA HTML
 // ============================================================================
 
+async fn og_home_png(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+    let actors = state.repo.list_actors().await.unwrap_or_default();
+    let concepts = state.repo.list_concepts().await.unwrap_or_default();
+    let png = og::render_home_og_png(actors.len(), concepts.len()).map_err(internal_err)?;
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=300"),
+        ],
+        png,
+    )
+        .into_response())
+}
+
 async fn og_actor_png(
     State(state): State<Arc<AppState>>,
     Path(handle): Path<String>,
@@ -1251,16 +1267,21 @@ fn load_index_html(state: &AppState) -> String {
     })
 }
 
-fn inject_og_meta(html: String, title: &str, desc: &str, image_url: &str) -> Html<String> {
+fn inject_og_meta(html: String, title: &str, desc: &str, image_url: &str, page_url: &str) -> Html<String> {
     let meta = format!(
-        r#"<meta property="og:title" content="{title}" />
+        r#"<meta property="og:url" content="{page_url}" />
+    <meta property="og:title" content="{title}" />
     <meta property="og:description" content="{desc}" />
     <meta property="og:image" content="{image_url}" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{title}" />
     <meta name="twitter:description" content="{desc}" />
     <meta name="twitter:image" content="{image_url}" />
 </head>"#,
+        page_url = page_url.replace('"', "&quot;"),
         title = title.replace('"', "&quot;"),
         desc = desc.replace('"', "&quot;"),
         image_url = image_url.replace('"', "&quot;"),
@@ -1274,13 +1295,22 @@ async fn spa_actor_html(
 ) -> Html<String> {
     let html = load_index_html(&state);
     let clean = handle.trim_start_matches('@');
+    let base = state.public_base_url.trim_end_matches('/');
     if let Ok(Some(actor)) = state.repo.get_actor_by_handle(clean).await {
         let title = format!("{} — Theory of Change | toctracker.com", actor.display_name);
         let desc = format!("{} · View flowchart, credences & update criteria.", actor.role_or_affiliation);
-        let img = format!("{}/og/actor/{}.png", state.public_base_url, actor.handle);
-        return inject_og_meta(html, &title, &desc, &img);
+        let img = format!("{base}/og/actor/{}.png", actor.handle);
+        let url = format!("{base}/a/{}", actor.handle);
+        return inject_og_meta(html, &title, &desc, &img, &url);
     }
-    Html(html)
+    let img = format!("{base}/og/home.png");
+    inject_og_meta(
+        html,
+        "toctracker.com — AI Safety Theory of Change Tracker",
+        "Compare AI Safety Theories of Change side-by-side: premises, bottlenecks, interventions, bets, and falsifiable update criteria.",
+        &img,
+        base,
+    )
 }
 
 async fn spa_compare_html(
@@ -1288,22 +1318,43 @@ async fn spa_compare_html(
     Query(params): Query<HashMap<String, String>>,
 ) -> Html<String> {
     let html = load_index_html(&state);
+    let base = state.public_base_url.trim_end_matches('/');
     if let (Some(a), Some(b)) = (params.get("a"), params.get("b")) {
-        let title = format!("{a} vs {b} — Crux Comparison | toctracker.com");
+        let title = format!("{a} vs {b} — Side-by-Side Comparison | toctracker.com");
         let desc = "Compare AI Safety Theories of Change side-by-side and pinpoint exact cruxes.";
         let img = format!(
-            "{}/og/compare?a={}&b={}",
-            state.public_base_url,
+            "{base}/og/compare?a={}&b={}",
             urlencoding::encode(a),
             urlencoding::encode(b)
         );
-        return inject_og_meta(html, &title, desc, &img);
+        let url = format!(
+            "{base}/compare?a={}&b={}",
+            urlencoding::encode(a),
+            urlencoding::encode(b)
+        );
+        return inject_og_meta(html, &title, desc, &img, &url);
     }
-    Html(html)
+    let img = format!("{base}/og/home.png");
+    inject_og_meta(
+        html,
+        "Compare AI Safety Theories of Change | toctracker.com",
+        "Compare any two AI Safety actors side-by-side to see shared premises and exact disagreements.",
+        &img,
+        &format!("{base}/compare"),
+    )
 }
 
 async fn spa_index_html(State(state): State<Arc<AppState>>) -> Html<String> {
-    Html(load_index_html(&state))
+    let html = load_index_html(&state);
+    let base = state.public_base_url.trim_end_matches('/');
+    let img = format!("{base}/og/home.png");
+    inject_og_meta(
+        html,
+        "toctracker.com — What AI Safety actors bet on, and where they split.",
+        "Compare AI Safety Theories of Change side-by-side: premises, bottlenecks, interventions, bets, and falsifiable update criteria.",
+        &img,
+        base,
+    )
 }
 
 fn internal_err<E: std::fmt::Display>(e: E) -> (StatusCode, String) {
