@@ -207,27 +207,34 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 ))}
               </select>
             )}
-            {snapshot && (
-              <a
-                href={`/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=json`}
-                target="_blank"
-                rel="noreferrer"
-                title={
-                  snapshot.arweave_tx_id &&
+            {snapshot && (() => {
+              const isRealArweave = Boolean(
+                snapshot.arweave_tx_id &&
                   !snapshot.arweave_tx_id.startsWith('seed_') &&
                   !snapshot.arweave_tx_id.startsWith('local_')
-                    ? 'View open JSON record (archived on Arweave)'
-                    : 'View open JSON record (toc-schema/v1)'
-                }
-                className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono-meta text-[11px] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
-              >
-                {snapshot.arweave_tx_id &&
-                !snapshot.arweave_tx_id.startsWith('seed_') &&
-                !snapshot.arweave_tx_id.startsWith('local_')
-                  ? `ar://${snapshot.arweave_tx_id.slice(0, 6)}..${snapshot.arweave_tx_id.slice(-3)}`
-                  : 'JSON'}
-              </a>
-            )}
+              );
+              return (
+                <a
+                  href={
+                    isRealArweave
+                      ? `https://arweave.net/${encodeURIComponent(snapshot.arweave_tx_id!)}`
+                      : `/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=json`
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  title={
+                    isRealArweave
+                      ? 'Verify permanent Arweave transaction on arweave.net'
+                      : 'View open JSON record (toc-schema/v1)'
+                  }
+                  className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono-meta text-[11px] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                >
+                  {isRealArweave
+                    ? `ar://${snapshot.arweave_tx_id!.slice(0, 6)}..${snapshot.arweave_tx_id!.slice(-3)}`
+                    : 'JSON'}
+                </a>
+              );
+            })()}
             <a
               href={`/api/v1/actors/${encodeURIComponent(actor.handle)}/export?format=markdown`}
               target="_blank"

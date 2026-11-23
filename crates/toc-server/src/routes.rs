@@ -863,6 +863,7 @@ async fn publish_snapshot(
 
 #[derive(Deserialize)]
 struct ClaimActorRequest {
+    #[allow(dead_code)]
     verified_handle: Option<String>,
 }
 
@@ -1777,5 +1778,33 @@ mod tests {
         let sim_body: serde_json::Value =
             serde_json::from_slice(&to_bytes(res.into_body(), 1024 * 1024).await.unwrap()).unwrap();
         assert_eq!(sim_body[0]["concept"]["id"], "cpt_root_alignment_behind");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_upload_to_ardrive_turbo_free_tier() {
+        use toc_storage::{generate_user_keypair, PublishEnvelope, StorageAdapter, TurboArweaveAdapter};
+        let kp = generate_user_keypair();
+        let adapter = TurboArweaveAdapter::new(
+            "https://upload.ardrive.io/v1/tx".into(),
+            "https://arweave.net/graphql".into(),
+            None,
+            Some(kp.secret_key_b64),
+        );
+        let env = PublishEnvelope {
+            record_type: "smoke_test".into(),
+            record_id: format!("smoke_{}", uuid::Uuid::new_v4().simple()),
+            actor_id: None,
+            root_concept_id: None,
+            prev_tx_id: None,
+            payload: serde_json::json!({
+                "app": "toctracker.com",
+                "schema_version": 1,
+                "smoke_test": true
+            }),
+        };
+        let tx_id = adapter.publish(&env).await.expect("Turbo upload failed");
+        println!("LIVE ARWEAVE TX: https://arweave.net/{tx_id}");
+        assert_eq!(tx_id.len(), 43);
     }
 }

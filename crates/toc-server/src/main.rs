@@ -41,8 +41,14 @@ async fn main() -> anyhow::Result<()> {
             let graphql = std::env::var("ARWEAVE_GRAPHQL_ENDPOINT")
                 .unwrap_or_else(|_| "https://arweave.net/graphql".into());
             let token = std::env::var("ARWEAVE_API_TOKEN").ok();
-            info!("Using TurboArweaveAdapter ({endpoint})");
-            Arc::new(TurboArweaveAdapter::new(endpoint, graphql, token))
+            let signer_secret = std::env::var("ARWEAVE_SIGNER_SECRET_B64").ok();
+            let adapter = TurboArweaveAdapter::new(endpoint.clone(), graphql, token, signer_secret);
+            info!(
+                endpoint = %endpoint,
+                pubkey = %adapter.publisher_pubkey_b64(),
+                "Using TurboArweaveAdapter (ANS-104 Ed25519)"
+            );
+            Arc::new(adapter)
         }
         _ => {
             info!("ARWEAVE_UPLOAD_ENDPOINT not set — using LocalMockAdapter for deterministic open-data archiving.");
