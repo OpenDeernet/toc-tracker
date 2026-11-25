@@ -1228,6 +1228,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
       {showAiPanel && (
         <CreateFromDocsPanel
           conceptsMap={conceptsMap}
+          existingNodeCount={nodes.length}
           onConceptsCreated={(created) => {
             setConceptsMap((prev) => {
               const next = { ...prev };
@@ -1237,13 +1238,51 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
           }}
           onApplyDraft={(payload) => {
             pushUndo();
-            setSummary(payload.summary);
             if (payload.actorNameHint && !actorName) setActorName(payload.actorNameHint);
             if (payload.actorRoleHint && !actorRole) setActorRole(payload.actorRoleHint);
-            setNodes(payload.nodes);
-            setEdges(payload.edges);
-            if (payload.updateCriteria.length > 0) setCriteria(payload.updateCriteria);
-            setAiNotice(payload.notice);
+            if (payload.mode === 'add' && nodes.length > 0) {
+              // Keep the map already in the editor. Append only claims it does not have yet,
+              // and give incoming ids a suffix so they cannot collide with existing ones.
+              const tag = Date.now().toString(36);
+              const haveConcepts = new Set(nodes.map((n) => n.concept_id));
+              const idMap: Record<string, string> = {};
+              const addedNodes = payload.nodes
+                .filter((n) => !haveConcepts.has(n.concept_id))
+                .map((n) => {
+                  idMap[n.local_id] = `${n.local_id}_${tag}`;
+                  return { ...n, local_id: idMap[n.local_id] };
+                });
+              const addedEdges = payload.edges
+                .filter((e) => idMap[e.source_local_id] && idMap[e.target_local_id])
+                .map((e) => ({
+                  ...e,
+                  id: `${e.id}_${tag}`,
+                  source_local_id: idMap[e.source_local_id],
+                  target_local_id: idMap[e.target_local_id],
+                }));
+              const addedCriteria = payload.updateCriteria
+                .filter((u) => !u.target_local_id || idMap[u.target_local_id])
+                .map((u) => ({
+                  ...u,
+                  id: `${u.id}_${tag}`,
+                  target_local_id: u.target_local_id ? idMap[u.target_local_id] : null,
+                }));
+              if (!summary.trim()) setSummary(payload.summary);
+              setNodes((prev) => [...prev, ...addedNodes]);
+              setEdges((prev) => [...prev, ...addedEdges]);
+              if (addedCriteria.length > 0) setCriteria((prev) => [...prev, ...addedCriteria]);
+              const skipped = payload.nodes.length - addedNodes.length;
+              setAiNotice(
+                `Added ${addedNodes.length} claim${addedNodes.length === 1 ? '' : 's'} to your map.` +
+                  (skipped > 0 ? ` Skipped ${skipped} already in it.` : '')
+              );
+            } else {
+              setSummary(payload.summary);
+              setNodes(payload.nodes);
+              setEdges(payload.edges);
+              if (payload.updateCriteria.length > 0) setCriteria(payload.updateCriteria);
+              setAiNotice(payload.notice);
+            }
             setShowAiPanel(false);
             setEditingLocalId(null);
             setStep(2);

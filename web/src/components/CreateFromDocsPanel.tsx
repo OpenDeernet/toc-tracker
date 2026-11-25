@@ -14,6 +14,8 @@ import {
 
 interface CreateFromDocsPanelProps {
   conceptsMap: Record<string, Concept>;
+  /** Claims already in the editor. When above zero, loading a draft asks whether to add or replace. */
+  existingNodeCount?: number;
   onConceptsCreated: (created: Concept[]) => void;
   onApplyDraft: (payload: {
     summary: string;
@@ -23,12 +25,15 @@ interface CreateFromDocsPanelProps {
     edges: SnapshotEdge[];
     updateCriteria: UpdateCriterion[];
     notice: string;
+    /** 'add' keeps the map already in the editor and appends the new claims. */
+    mode: 'replace' | 'add';
   }) => void;
   onClose: () => void;
 }
 
 export function CreateFromDocsPanel({
   conceptsMap,
+  existingNodeCount = 0,
   onConceptsCreated,
   onApplyDraft,
   onClose,
@@ -86,8 +91,18 @@ export function CreateFromDocsPanel({
     setLoading(true);
     try {
       const res = await api.studioExtract({ documents: docs });
+      if (!res.used_llm && aiStatus?.llm_enabled) {
+        // A model is configured but this request fell back to the keyword matcher,
+        // which returns nearest-sounding existing claims, not claims read from the sources.
+        // Showing those as a draft would put other people's views in this map.
+        setError(
+          'The AI model did not answer this time, so no draft was made. Your sources are still here. Please try again in a minute.'
+        );
+        return;
+      }
       setDraft(res);
-      setSelectedNodeIds(new Set(res.nodes.map((n) => n.local_id)));
+      // Keyword-only guesses start unselected so each one is a deliberate choice.
+      setSelectedNodeIds(res.used_llm ? new Set(res.nodes.map((n) => n.local_id)) : new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Extraction failed');
     } finally {
@@ -104,8 +119,17 @@ export function CreateFromDocsPanel({
     });
   }
 
-  async function handleApply() {
+  async function handleApply(mode: 'replace' | 'add' = 'replace') {
     if (!draft) return;
+    if (
+      mode === 'replace' &&
+      existingNodeCount > 0 &&
+      !window.confirm(
+        `Replace the ${existingNodeCount} claim${existingNodeCount === 1 ? '' : 's'} already in your map? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setApplying(true);
     try {
       const keptNodes = draft.nodes.filter((n) => selectedNodeIds.has(n.local_id));
@@ -150,6 +174,7 @@ export function CreateFromDocsPanel({
         edges: finalEdges,
         updateCriteria: finalCriteria,
         notice: draft.note,
+        mode,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to apply draft');
@@ -275,7 +300,8 @@ export function CreateFromDocsPanel({
           <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-mono-meta text-[10px] font-semibold uppercase text-[var(--ink-muted)]">
-                Extracted Summary · {draft.docs_processed} source(s)
+                Extracted Summary · {draft.docs_processed} source(s) ·{' '}
+                {draft.used_llm ? `${draft.provider} · ${draft.model}` : 'keyword matching only'}
               </span>
               <button
                 type="button"
@@ -286,8 +312,16 @@ export function CreateFromDocsPanel({
               </button>
             </div>
             <p className="mt-1 text-sm font-medium text-[var(--ink-primary)]">{draft.summary}</p>
-            <p className="mt-1 text-[11px] text-[var(--ink-muted)]">{draft.note}</p>
+            {draft.used_llm && <p className="mt-1 text-[11px] text-[var(--ink-muted)]">{draft.note}</p>}
           </div>
+
+          {!draft.used_llm && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <strong>These are rough guesses, not a reading of your text.</strong> No AI model is set up, so the
+              claims below were matched by keyword from claims other people already use. Nothing is selected. Tick
+              only the ones you actually hold.
+            </div>
+          )}
 
           <div className="grid max-h-[340px] gap-2 overflow-y-auto sm:grid-cols-2">
             {draft.nodes.map((node) => {
@@ -352,14 +386,35 @@ export function CreateFromDocsPanel({
             <span className="text-xs text-[var(--ink-secondary)]">
               {selectedNodeIds.size} of {draft.nodes.length} claims selected
             </span>
-            <button
-              type="button"
-              disabled={applying || selectedNodeIds.size === 0}
-              onClick={handleApply}
-              className="rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
-            >
-              {applying ? 'Loading…' : `Load ${selectedNodeIds.size} Claims into Editor →`}
-            </button>
+            {existingNodeCount > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={applying || selectedNodeIds.size === 0}
+                  onClick={() => handleApply('replace')}
+                  className="rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] disabled:opacity-40"
+                >
+                  Replace my map
+                </button>
+                <button
+                  type="button"
+                  disabled={applying || selectedNodeIds.size === 0}
+                  onClick={() => handleApply('add')}
+                  className="rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  {applying ? 'Loading…' : `Add ${selectedNodeIds.size} Claims to my map →`}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={applying || selectedNodeIds.size === 0}
+                onClick={() => handleApply('replace')}
+                className="rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              >
+                {applying ? 'Loading…' : `Load ${selectedNodeIds.size} Claims into Editor →`}
+              </button>
+            )}
           </div>
         </div>
       )}
