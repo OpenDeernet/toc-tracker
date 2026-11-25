@@ -95,8 +95,9 @@ export function CreateFromDocsPanel({
         // A model is configured but this request fell back to the keyword matcher,
         // which returns nearest-sounding existing claims, not claims read from the sources.
         // Showing those as a draft would put other people's views in this map.
+        const reason = res.note && !res.note.startsWith('Local matcher') ? ` ${res.note}` : '';
         setError(
-          'The AI model did not answer this time, so no draft was made. Your sources are still here. Please try again in a minute.'
+          `No draft was made, because the AI model did not answer.${reason} Your sources are still here. If this keeps happening, the site's model key needs attention.`
         );
         return;
       }
