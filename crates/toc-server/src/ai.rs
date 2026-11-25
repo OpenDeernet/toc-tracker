@@ -378,6 +378,9 @@ pub async fn extract_draft_from_documents(
 
     let docs_processed = prepared.len();
     let provider = detect_provider();
+    // Why the configured model did not answer, if it did not. Shown to the user so a
+    // rejected key or an empty account is not mistaken for "no key set".
+    let mut llm_failure: Option<String> = None;
 
     match &provider {
         LlmProvider::OpenRouter { api_key, model } => {
@@ -393,7 +396,10 @@ pub async fn extract_draft_from_documents(
             .await
             {
                 Ok(draft) => return draft,
-                Err(e) => tracing::warn!(error = %e, "OpenRouter extraction fell back to heuristic"),
+                Err(e) => {
+                    tracing::warn!(error = %e, "OpenRouter extraction fell back to heuristic");
+                    llm_failure = Some(format!("OpenRouter: {e}"));
+                }
             }
         }
         LlmProvider::OpenAI { api_key, model } => {
@@ -409,19 +415,29 @@ pub async fn extract_draft_from_documents(
             .await
             {
                 Ok(draft) => return draft,
-                Err(e) => tracing::warn!(error = %e, "OpenAI extraction fell back to heuristic"),
+                Err(e) => {
+                    tracing::warn!(error = %e, "OpenAI extraction fell back to heuristic");
+                    llm_failure = Some(format!("OpenAI: {e}"));
+                }
             }
         }
         LlmProvider::Anthropic { api_key, model } => {
             match extract_via_anthropic(&llm_client, api_key, model, &prepared, concepts).await {
                 Ok(draft) => return draft,
-                Err(e) => tracing::warn!(error = %e, "Anthropic extraction fell back to heuristic"),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Anthropic extraction fell back to heuristic");
+                    llm_failure = Some(format!("Anthropic: {e}"));
+                }
             }
         }
         LlmProvider::LocalHeuristic => {}
     }
 
-    extract_heuristic_multi(&prepared, concepts, docs_processed)
+    let mut draft = extract_heuristic_multi(&prepared, concepts, docs_processed);
+    if let Some(reason) = llm_failure {
+        draft.note = format!("The AI model did not answer ({reason}).");
+    }
+    draft
 }
 
 pub fn html_to_readable_text(html: &str) -> String {
@@ -765,6 +781,20 @@ fn parse_llm_json_to_draft(
     })
 }
 
+/// Plain-words reason for a failed model request, safe to show to a user.
+fn describe_llm_status(status: reqwest::StatusCode) -> String {
+    let why = match status.as_u16() {
+        401 | 403 => "the API key was rejected",
+        402 => "the account is out of credit",
+        404 => "the model name was not found",
+        408 | 504 => "the request timed out",
+        429 => "the rate limit was reached",
+        500..=599 => "the provider had an error",
+        _ => "the request was refused",
+    };
+    format!("{why}, status {}", status.as_u16())
+}
+
 async fn extract_via_openai_compat(
     client: &reqwest::Client,
     endpoint: &str,
@@ -799,7 +829,7 @@ async fn extract_via_openai_compat(
         let status = resp.status();
         let err_txt = resp.text().await.unwrap_or_default();
         tracing::warn!(provider = provider_name, model = model, %status, error = %err_txt, "LLM extraction request failed");
-        anyhow::bail!("LLM request failed ({status})");
+        anyhow::bail!("{}", describe_llm_status(status));
     }
     let val: serde_json::Value = resp.json().await?;
     let content = val["choices"][0]["message"]["content"]
@@ -831,7 +861,7 @@ async fn extract_via_anthropic(
         .await?;
 
     if !resp.status().is_success() {
-        anyhow::bail!("Anthropic request failed ({})", resp.status());
+        anyhow::bail!("{}", describe_llm_status(resp.status()));
     }
     let val: serde_json::Value = resp.json().await?;
     let content = val["content"][0]["text"]
