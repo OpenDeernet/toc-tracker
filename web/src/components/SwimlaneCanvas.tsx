@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Controls,
   MarkerType,
+  applyNodeChanges,
   useReactFlow,
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
 } from '@xyflow/react';
 import { GripHorizontal, Maximize2, Minimize2, Plus, Trash2, X } from 'lucide-react';
 import {
@@ -181,6 +183,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           id: `__lane_${s.key}`,
           type: 'laneColumn',
           position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH - 18, y: LANE_TOP },
+          initialWidth: LANE_WIDTH,
+          initialHeight: laneHeight,
           data: laneData,
           draggable: false,
           selectable: false,
@@ -205,6 +209,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
               x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH,
               y: CARD_TOP_OFFSET + Math.max(0, (totalH - SINGLE_ROW_HEIGHT) / 2),
             },
+            initialWidth: 220,
+            initialHeight: 108,
             data: phData,
             draggable: false,
             connectable: false,
@@ -241,6 +247,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             id: n.local_id,
             type: 'tocNode',
             position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * SINGLE_ROW_HEIGHT },
+            initialWidth: 220,
+            initialHeight: 112,
             data,
             draggable: false,
             zIndex: 2,
@@ -365,6 +373,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
         id: `__lane_${s.key}`,
         type: 'laneColumn',
         position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH - 18, y: LANE_TOP },
+        initialWidth: LANE_WIDTH + 8,
+        initialHeight: laneHeight,
         data: laneData,
         draggable: false,
         selectable: false,
@@ -418,6 +428,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           id: dn.cluster_id,
           type: 'tocNode',
           position: { x: LEFT_OFFSET + (s.num - 1) * COL_WIDTH, y: startY + idx * COMPARE_ROW_HEIGHT },
+          initialWidth: 228,
+          initialHeight: 136,
           data,
           draggable: false,
           zIndex: 2,
@@ -543,6 +555,27 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     }
   }
 
+  // Preserve React Flow v12 DOM-measured dimensions across layout updates via controlled onNodesChange
+  // (prevents React Flow v12 from ever setting visibility:hidden when nodes re-render)
+  const [flowNodes, setFlowNodes] = useState<Node[]>(rfNodes);
+
+  useEffect(() => {
+    setFlowNodes((prev) => {
+      const prevMeasured = new Map(prev.map((n) => [n.id, n.measured]));
+      return rfNodes.map((n) => {
+        const measured = prevMeasured.get(n.id);
+        return measured ? { ...n, measured } : n;
+      });
+    });
+  }, [rfNodes]);
+
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    // Only apply dimension & selection updates from React Flow (never allow accidental delete/position drift)
+    const safeChanges = changes.filter((c) => c.type === 'dimensions' || c.type === 'select');
+    if (safeChanges.length === 0) return;
+    setFlowNodes((nds) => applyNodeChanges(safeChanges, nds));
+  }, []);
+
   const fitKey = `${rfNodes.map((n) => n.id).join(',')}|${expanded ? 'fs' : 'norm'}`;
 
   return (
@@ -629,9 +662,11 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
         {/* React Flow Interactive Viewport */}
         <div className="relative flex-1">
           <ReactFlow
-            nodes={rfNodes}
+            nodes={flowNodes}
             edges={rfEdges}
+            onNodesChange={handleNodesChange}
             nodeTypes={nodeTypes}
+            deleteKeyCode={null}
             fitView
             fitViewOptions={{ padding: 0.08, maxZoom: 1.05 }}
             nodesDraggable={false}

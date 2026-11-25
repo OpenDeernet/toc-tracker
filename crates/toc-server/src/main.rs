@@ -14,6 +14,34 @@ use tracing::{error, info, warn};
 use crate::repo::{MemoryRepo, PostgresRepo, Repository};
 use crate::routes::{build_router, AppState};
 
+fn resolve_database_url() -> Option<(String, &'static str)> {
+    for var_name in [
+        "DATABASE_URL",
+        "DATABASE_PRIVATE_URL",
+        "DATABASE_PUBLIC_URL",
+        "POSTGRES_URL",
+    ] {
+        if let Ok(val) = std::env::var(var_name) {
+            let trimmed = val.trim();
+            if trimmed.starts_with("postgres://") || trimmed.starts_with("postgresql://") {
+                return Some((trimmed.to_string(), var_name));
+            }
+        }
+    }
+    // Assemble from standard Railway/libpq PG* env vars if present
+    let host = std::env::var("PGHOST").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())?;
+    let user = std::env::var("PGUSER").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())?;
+    let db = std::env::var("PGDATABASE").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())?;
+    let pass = std::env::var("PGPASSWORD").unwrap_or_default();
+    let port = std::env::var("PGPORT").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).unwrap_or_else(|| "5432".into());
+    let url = if pass.is_empty() {
+        format!("postgres://{user}@{host}:{port}/{db}")
+    } else {
+        format!("postgres://{user}:{}@{host}:{port}/{db}", urlencoding::encode(&pass))
+    };
+    Some((url, "PGHOST/PGUSER/PGDATABASE"))
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
@@ -24,14 +52,14 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    let repo: Arc<dyn Repository> = match std::env::var("DATABASE_URL") {
-        Ok(url) if !url.trim().is_empty() => {
-            info!("Connecting to PostgreSQL and running migrations...");
-            Arc::new(PostgresRepo::connect_and_migrate(&url).await?)
+    let (repo, repo_mode): (Arc<dyn Repository>, &'static str) = match resolve_database_url() {
+        Some((url, source)) => {
+            info!(source, "Connecting to PostgreSQL and running migrations...");
+            (Arc::new(PostgresRepo::connect_and_migrate(&url).await?), "postgres")
         }
-        _ => {
-            warn!("DATABASE_URL not set — running with zero-config MemoryRepo (seeded with AI Safety ToCs). Set DATABASE_URL to use PostgreSQL.");
-            Arc::new(MemoryRepo::new())
+        None => {
+            warn!("No valid PostgreSQL URL found (checked DATABASE_URL, DATABASE_PRIVATE_URL, DATABASE_PUBLIC_URL, POSTGRES_URL, PGHOST) — running with ephemeral MemoryRepo. Data & sessions will reset on restart!");
+            (Arc::new(MemoryRepo::new()), "memory")
         }
     };
     repo.seed_if_empty().await?;
@@ -116,6 +144,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = Arc::new(AppState {
         repo,
+        repo_mode,
         storage,
         oauth_states: auth::OAuthStateStore::default(),
         magic_links: auth::MagicLinkStore::default(),

@@ -63,6 +63,7 @@ impl RateLimiter {
 
 pub struct AppState {
     pub repo: Arc<dyn Repository>,
+    pub repo_mode: &'static str,
     pub storage: Arc<dyn StorageAdapter>,
     pub oauth_states: auth::OAuthStateStore,
     pub magic_links: auth::MagicLinkStore,
@@ -164,6 +165,7 @@ async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                 Json(serde_json::json!({
                     "status": "ok",
                     "schema_version": CURRENT_SCHEMA_VERSION,
+                    "repo_mode": state.repo_mode,
                     "storage_adapter": state.storage.adapter_name(),
                     "actors_count": actors.len(),
                     "ai_provider": ai.provider,
@@ -1864,6 +1866,7 @@ mod tests {
         repo.seed_if_empty().await.unwrap();
         Arc::new(AppState {
             repo,
+            repo_mode: "memory",
             storage: Arc::new(LocalMockAdapter),
             oauth_states: auth::OAuthStateStore::default(),
             magic_links: auth::MagicLinkStore::default(),

@@ -596,15 +596,7 @@ impl PostgresRepo {
 #[async_trait]
 impl Repository for PostgresRepo {
     async fn seed_if_empty(&self) -> Result<()> {
-        let force_reseed = std::env::var("RESEED")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
-        if force_reseed {
-            sqlx::query("TRUNCATE TABLE arweave_outbox, link_attestations, snapshot_nodes_index, toc_snapshots, actors, concepts RESTART IDENTITY CASCADE")
-                .execute(&self.pool)
-                .await?;
-        }
-
+        // Additive-only seed sync: never truncates or overwrites existing user profiles, maps, or sessions.
         let bundle = seed::build_seed_bundle();
 
         // 1. Additively insert any new concepts from seed-bundle.json (never overwrites existing)
