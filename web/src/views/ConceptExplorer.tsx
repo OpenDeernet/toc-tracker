@@ -56,7 +56,7 @@ export function ConceptExplorer() {
 
       <header className="mt-4 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
         <div className="font-mono-meta text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
-          {data.root_concept.stage} · Root Claim
+          {data.root_concept.stage} · Claim
         </div>
         <h1 className="mt-1.5 font-editorial text-3xl font-semibold text-[var(--ink-primary)]">
           {data.root_concept.title}
@@ -71,7 +71,7 @@ export function ConceptExplorer() {
       {/* 5-Band Credence Spectrum */}
       <section className="mt-6 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6">
         <h2 className="text-sm font-bold text-[var(--ink-primary)]">
-          Credence Spectrum ({data.positions.length})
+          Where people land ({data.positions.length})
         </h2>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-5">
@@ -128,7 +128,7 @@ export function ConceptExplorer() {
           <div className="flex items-center gap-2">
             <GitFork className="h-4 w-4 text-[var(--ink-muted)]" />
             <h2 className="text-sm font-bold text-[var(--ink-primary)]">
-              Phrasing Variants ({data.forks.length})
+              Other phrasings ({data.forks.length})
             </h2>
           </div>
           <div className="mt-3 space-y-2">
@@ -152,7 +152,7 @@ export function ConceptExplorer() {
         </div>
         {allCriteria.length === 0 ? (
           <p className="mt-2 text-xs text-[var(--ink-muted)]">
-            No actors have attached an update criterion directly to this concept yet.
+            Nobody has attached an update criterion to this claim yet.
           </p>
         ) : (
           <div className="mt-3 space-y-2.5">

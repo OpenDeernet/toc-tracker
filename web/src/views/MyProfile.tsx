@@ -74,8 +74,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
             Create your Theory of Change Profile
           </h1>
           <p className="mt-2 text-sm text-[var(--ink-secondary)]">
-            Sign in with X to publish your affiliation, one-line stance, key reading links, written essay, and
-            5-column flowchart.
+            Sign in with X to add your affiliation, stance, reading links, written position, and flowchart.
           </p>
           <button
             type="button"
@@ -134,7 +133,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
         });
         setActiveHandle(created.handle);
         onSaved();
-        setSavedNotice('Profile created! You can view it live or build your 5-column flowchart next.');
+        setSavedNotice('Profile created. You can view it live or build a flowchart next.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
@@ -151,8 +150,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
             {activeHandle ? 'Edit Your Profile' : 'Create Your Profile'}
           </h1>
           <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-            Set up your stance, reading influences, and written position — then optionally map your 5-column
-            flowchart in Studio.
+            Add your stance, reading links, and a written position. You can build a flowchart in Studio anytime.
           </p>
         </div>
         {activeHandle && (
@@ -262,7 +260,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
                 type="text"
                 value={stance}
                 onChange={(e) => setStance(e.target.value)}
-                placeholder="Summarize your core AI safety bet in one crisp sentence..."
+                placeholder="Your core AI safety bet in one sentence..."
                 className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
               />
             </div>
@@ -305,7 +303,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
                   Written Position (Markdown)
                 </h2>
                 <p className="mt-0.5 text-xs text-[var(--ink-muted)]">
-                  Explain the nuance, caveats, and linear reasoning behind your Theory of Change.
+                  Write out your reasoning, caveats, or anything that doesn&apos;t fit in a flowchart.
                 </p>
               </div>
               <div className="inline-flex rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-[11px] font-semibold">
@@ -354,7 +352,7 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
                   Influences & Key Reading
                 </h2>
                 <p className="mt-0.5 text-xs text-[var(--ink-muted)]">
-                  Posts, papers, interviews, or books you stand by that give context on your position.
+                  Posts, papers, interviews, or books you stand by.
                 </p>
               </div>
               <button
@@ -406,14 +404,14 @@ export function MyProfile({ user, ownedActors, onOpenAuth, onSaved }: MyProfileP
                     onChange={(e) =>
                       setRefs((prev) => prev.map((r, i) => (i === idx ? { ...r, note: e.target.value } : r)))
                     }
-                    placeholder="Why this shaped your view (optional)"
+                    placeholder="Short note (optional)"
                     className="w-full rounded-lg border border-[var(--border-hairline)] bg-white px-2.5 py-1.5 text-xs"
                   />
                 </div>
               ))}
               {refs.length === 0 && (
                 <p className="rounded-xl border border-dashed border-[var(--border-hairline)] p-4 text-center text-xs text-[var(--ink-muted)]">
-                  No links added yet. Click <strong>+ Add link</strong> to share papers or posts that shaped your view.
+                  No links yet. Click <strong>+ Add link</strong> to add papers, posts, or talks.
                 </p>
               )}
             </div>

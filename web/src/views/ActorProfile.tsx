@@ -377,7 +377,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
           {(
             [
               ['flowchart', 'Flowchart'],
-              ['brief', essayContent ? 'Written Position & Brief' : 'Brief & Essay'],
+              ['brief', essayContent ? 'Written & Outline' : 'Outline & Notes'],
               ['influences', `Influences & Sources (${refLinks.length})`],
               ['criteria', `Update Criteria (${snapshot?.update_criteria.length ?? 0})`],
               ['changelog', `Changelog (${snapshots.length})`],
@@ -403,7 +403,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
           {essayContent && (
             <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
               <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                Linear Written Position (Markdown)
+                Written Position
               </div>
               <h2 className="mt-0.5 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
                 In Their Own Words
@@ -443,14 +443,14 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
           )}
 
           <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 text-center">
-            <p className="text-sm font-semibold text-[var(--ink-primary)]">No 5-column flowchart mapped yet.</p>
+            <p className="text-sm font-semibold text-[var(--ink-primary)]">No flowchart yet.</p>
             {isOwner && (
               <Link
                 to={`/studio?edit=${encodeURIComponent(actor.handle)}`}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                Build Flowchart in Studio
+                Build Flowchart
               </Link>
             )}
           </div>
@@ -528,7 +528,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                   <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
                     <div>
                       <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                        Linear Written Position (Markdown)
+                        Written Position
                       </div>
                       <h2 className="mt-0.5 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
                         In Their Own Words
@@ -543,7 +543,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                         }}
                         className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
                       >
-                        {essayContent ? 'Edit Essay' : '+ Write Essay'}
+                        {essayContent ? 'Edit Essay' : '+ Write Position'}
                       </button>
                     )}
                   </div>
@@ -554,7 +554,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                         rows={10}
                         value={essayDraft}
                         onChange={(e) => setEssayDraft(e.target.value)}
-                        placeholder="Write your nuanced Theory of Change in Markdown (supports ## headings, **bold**, *italic*, - bullets, > quotes, and [links](https://...))..."
+                        placeholder="Write out your position in Markdown (## headings, **bold**, *italic*, - bullets, > quotes, [links](https://...))..."
                         className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 font-mono-meta text-xs leading-relaxed text-[var(--ink-primary)] focus:border-[var(--ink-primary)] focus:outline-none"
                       />
                       <div className="flex items-center justify-end gap-2">
@@ -571,7 +571,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                           onClick={handleSaveEssay}
                           className="rounded-lg bg-[var(--ink-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                         >
-                          {savingEssay ? 'Saving v' + (snapshot.version + 1) + '…' : 'Save & Archive Essay'}
+                          {savingEssay ? 'Saving v' + (snapshot.version + 1) + '…' : 'Save'}
                         </button>
                       </div>
                     </div>
@@ -581,8 +581,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                     </div>
                   ) : (
                     <p className="mt-3 text-xs text-[var(--ink-muted)]">
-                      No long-form written essay yet. Add Markdown prose here to explain nuances, caveats, and
-                      context beyond the 5-column flowchart.
+                      Nothing written here yet. Add notes, caveats, or a full write-up to go with the flowchart.
                     </p>
                   )}
                 </div>
@@ -593,7 +592,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                   <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
                     <div>
                       <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                        Context & Foundational Links
+                        Reading & Sources
                       </div>
                       <h2 className="mt-0.5 flex items-center gap-2 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
                         <BookOpen className="h-4 w-4 text-[var(--ink-muted)]" />
@@ -649,10 +648,10 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
               <div className="space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
                 <div className="border-b border-[var(--border-hairline)] pb-3">
                   <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                    Structured Chain Breakdown
+                    Stage by Stage
                   </div>
                   <h2 className="mt-0.5 font-editorial text-lg font-semibold text-[var(--ink-primary)]">
-                    Step-by-Step Linear Brief
+                    Full Outline
                   </h2>
                 </div>
               {STAGES.map((stage) => {
@@ -707,7 +706,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
               {rejectedNodes.length > 0 && (
                 <div className="border-t border-[var(--border-hairline)] pt-5">
                   <div className="font-mono-meta text-[11px] font-semibold uppercase tracking-wider text-rose-700">
-                    Explicitly Rejected / Deprioritized Paths
+                    Not Betting On
                   </div>
                   <div className="mt-3 space-y-2">
                     {rejectedNodes.map((n) => (
@@ -732,7 +731,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
               <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
                 <div>
                   <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                    Context & Foundational Links
+                    Reading & Sources
                   </div>
                   <h2 className="mt-0.5 flex items-center gap-2 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
                     <BookOpen className="h-4 w-4 text-[var(--ink-muted)]" />
@@ -845,13 +844,13 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-xl bg-[var(--bg-canvas)] p-3.5 text-xs">
                         <div className="font-mono-meta text-[10px] font-bold uppercase text-[var(--ink-muted)]">
-                          IF (Observable Trigger)
+                          If this happens
                         </div>
                         <p className="mt-1 text-sm font-medium text-[var(--ink-primary)]">{uc.trigger}</p>
                       </div>
                       <div className="rounded-xl bg-[var(--semantic-crux-bg)] p-3.5 text-xs">
                         <div className="font-mono-meta text-[10px] font-bold uppercase text-amber-800">
-                          THEN (Planned Pivot)
+                          Then
                         </div>
                         <p className="mt-1 text-sm font-medium text-[var(--ink-primary)]">{uc.pivot_action}</p>
                       </div>
@@ -1019,7 +1018,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                   </button>
                 </div>
                 <p className="mt-0.5 text-[11px] text-[var(--ink-muted)]">
-                  Posts, papers, or talks you stand by that establish context on your position.
+                  Posts, papers, or talks you stand by.
                 </p>
                 <div className="mt-2 space-y-2">
                   {profRefs.map((ref, idx) => (
@@ -1066,7 +1065,7 @@ export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfile
                             prev.map((r, i) => (i === idx ? { ...r, note: e.target.value } : r))
                           )
                         }
-                        placeholder="Why this shaped your view (optional)"
+                        placeholder="Short note (optional)"
                         className="w-full rounded-md border border-[var(--border-hairline)] bg-white px-2.5 py-1 text-[11px]"
                       />
                     </div>

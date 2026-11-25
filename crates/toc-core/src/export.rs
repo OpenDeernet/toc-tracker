@@ -99,7 +99,7 @@ pub fn snapshot_to_markdown(
         .filter(|n| matches!(n.stance, NodeStance::Rejected | NodeStance::Deprioritized))
         .collect();
     if !rejected.is_empty() {
-        md.push_str("## Explicitly Rejected / Deprioritized Paths\n\n");
+        md.push_str("## Not Betting On\n\n");
         for n in rejected {
             let title = cmap
                 .get(n.concept_id.as_str())
@@ -119,7 +119,7 @@ pub fn snapshot_to_markdown(
         md.push('\n');
     }
 
-    md.push_str("## Update Criteria (Pivot Triggers)\n\n");
+    md.push_str("## Update Criteria\n\n");
     for uc in &snapshot.update_criteria {
         let tf = uc
             .timeframe

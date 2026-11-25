@@ -2,9 +2,9 @@ export type Stage = 'premise' | 'bottleneck' | 'intervention' | 'bet' | 'outcome
 
 export const STAGES: { key: Stage; num: number; label: string; question: string }[] = [
   { key: 'premise', num: 1, label: 'Premise', question: 'What happens by default?' },
-  { key: 'bottleneck', num: 2, label: 'Bottleneck', question: 'What specific obstacle blocks a good outcome?' },
-  { key: 'intervention', num: 3, label: 'Intervention', question: 'What mechanism shifts the trajectory?' },
-  { key: 'bet', num: 4, label: 'Bet', question: 'What concrete work are you doing right now?' },
+  { key: 'bottleneck', num: 2, label: 'Bottleneck', question: 'What gets in the way of a good outcome?' },
+  { key: 'intervention', num: 3, label: 'Intervention', question: 'What actually helps?' },
+  { key: 'bet', num: 4, label: 'Bet', question: 'What are you working on right now?' },
   { key: 'outcome', num: 5, label: 'Outcome', question: 'What does success look like?' },
 ];
 

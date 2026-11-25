@@ -141,7 +141,7 @@ pub fn render_home_og_png(actor_count: usize, concept_count: usize) -> Result<Ve
 
   <text x="56" y="164" font-size="50" font-weight="700" fill="#18181B">What AI Safety actors bet on,</text>
   <text x="56" y="222" font-size="50" font-weight="700" fill="#18181B">and where they split.</text>
-  <text x="56" y="274" font-size="23" fill="#52525B">Compare premises, bottlenecks, interventions &amp; falsifiable update criteria side-by-side.</text>
+  <text x="56" y="274" font-size="23" fill="#52525B">Premises, bottlenecks, bets, and what would change people&apos;s minds.</text>
 
   {cols_svg}
 
@@ -228,7 +228,7 @@ pub fn render_actor_og_png(
   {cards}
 
   <rect x="56" y="458" width="1088" height="118" rx="14" fill="#FFFBEB" stroke="#D97706" stroke-width="1.8"/>
-  <text x="80" y="492" font-size="14" font-family="monospace" font-weight="700" fill="#92400E">WHAT WOULD CHANGE THEIR MIND (UPDATE CRITERION)</text>
+  <text x="80" y="492" font-size="14" font-family="monospace" font-weight="700" fill="#92400E">WHAT WOULD CHANGE THEIR MIND</text>
   <text x="80" y="532" font-size="19" font-weight="600" fill="#18181B">{uc}</text>
 </svg>"##,
         ver = snapshot.version,
@@ -251,7 +251,7 @@ pub fn render_compare_og_png(
         .top_cruxes
         .first()
         .map(|c| c.canonical_title.clone())
-        .unwrap_or_else(|| "Distinct downstream bets".into());
+        .unwrap_or_else(|| "Different day-to-day bets".into());
 
     let detail_line = diff
         .summary

@@ -73,7 +73,7 @@ export function ExploreHome() {
             What AI Safety actors bet on, and where they split.
           </h1>
           <p className="mt-2.5 text-sm text-[var(--ink-secondary)] sm:text-[15px]">
-            Premises, bets, and falsifiable update criteria — side by side.
+            Premises, bets, and what would change people&apos;s minds, side by side.
           </p>
         </div>
 
@@ -322,7 +322,7 @@ export function ExploreHome() {
 
                   <div className="mt-4 space-y-2.5">
                     <div>
-                      <div className="text-[11px] font-semibold text-emerald-800">Bullish / Betting</div>
+                      <div className="text-[11px] font-semibold text-emerald-800">Agree / Betting</div>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {item.supporters.length > 0 ? (
                           item.supporters.map((s) => (

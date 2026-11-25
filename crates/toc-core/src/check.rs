@@ -70,7 +70,7 @@ pub fn run_epistemic_checks(
                 code: "unfalsifiable_crux".into(),
                 severity: CheckSeverity::Warning,
                 title: format!("No update criterion on \"{}\"", title_of(n)),
-                detail: "You flagged this as a key crux, but nothing tests it yet. What concrete signal would move your belief?".into(),
+                detail: "Marked as a key crux, but nothing tests it yet. What would change your mind here?".into(),
                 target_local_id: Some(n.local_id.clone()),
                 suggested_concept_id: None,
             });
@@ -88,7 +88,7 @@ pub fn run_epistemic_checks(
                         severity: CheckSeverity::Insight,
                         title: format!("Bet rests on a {} intervention", cred.display_pill()),
                         detail: format!(
-                            "\"{}\" is rated below 50%. Intentional high-leverage longshot, or worth noting a fallback?",
+                            "\"{}\" is rated below 50%. Intentional longshot, or worth noting a fallback?",
                             title_of(n)
                         ),
                         target_local_id: Some(n.local_id.clone()),
@@ -129,7 +129,7 @@ pub fn run_epistemic_checks(
                 code: "vague_criterion".into(),
                 severity: CheckSeverity::Tip,
                 title: "Make your update criterion checkable".into(),
-                detail: "Adding a rough date (e.g. by Q4 2027) or measurable threshold makes it easy to revisit later.".into(),
+                detail: "Add a rough date (like Q4 2027) or clear threshold so you can check it later.".into(),
                 target_local_id: uc.target_local_id.clone(),
                 suggested_concept_id: None,
             });
@@ -183,7 +183,7 @@ pub fn run_epistemic_checks(
                     code: "missing_rival_stance".into(),
                     severity: CheckSeverity::Insight,
                     title: format!("Weigh in on \"{}\"?", rival.title),
-                    detail: "Others who share your premises bet on this. Marking your stance (even skeptical) makes comparisons much sharper.".into(),
+                    detail: "People who share your premises bet on this. Adding your view (even if skeptical) makes comparisons clearer.".into(),
                     target_local_id: None,
                     suggested_concept_id: Some(rival.id.clone()),
                 });

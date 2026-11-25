@@ -596,7 +596,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
         <div className="mb-4 rounded-2xl border border-amber-300/90 bg-[var(--bg-surface)] p-4">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono-meta text-[11px] font-bold uppercase tracking-wider text-amber-900">
-              Epistemic Stress-Test {lintChecks.length > 0 ? `(${lintChecks.length})` : ''}
+              Map Stress-Test {lintChecks.length > 0 ? `(${lintChecks.length})` : ''}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -606,7 +606,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ink-primary)] bg-[var(--ink-primary)] px-2.5 py-1 text-[11px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 <Sparkles className="h-3 w-3 text-amber-300" />
-                {stressLoading ? 'Analyzing…' : stressTest ? 'Re-run Deep Stress-Test' : 'Run Deep Stress-Test'}
+                {stressLoading ? 'Checking…' : stressTest ? 'Re-run Stress-Test' : 'Run AI Stress-Test'}
               </button>
               <button
                 type="button"
@@ -671,7 +671,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
             <div className="mt-3 space-y-2.5 border-t border-[var(--border-hairline)] pt-3">
               <div className="flex items-center justify-between">
                 <span className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
-                  Deep Stress-Test · {stressTest.used_llm ? `${stressTest.provider} (${stressTest.model})` : 'Field Graph Analysis'}
+                  Stress-Test · {stressTest.used_llm ? `${stressTest.provider} (${stressTest.model})` : 'Field Graph'}
                 </span>
               </div>
               <div className="grid gap-2.5 md:grid-cols-3">
@@ -703,7 +703,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                   <div className="flex flex-col justify-between rounded-xl border border-rose-200/80 bg-rose-50/40 p-3 text-xs">
                     <div>
                       <span className="font-mono-meta text-[10px] font-bold uppercase text-rose-800">
-                        Steelman Objection · {stressTest.steelman_objection.from_perspective}
+                        Strongest Objection · {stressTest.steelman_objection.from_perspective}
                       </span>
                       <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--ink-primary)]">
                         {stressTest.steelman_objection.argument}
@@ -715,7 +715,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                         target="_blank"
                         className="mt-2.5 inline-block text-[10px] font-semibold text-rose-800 underline"
                       >
-                        Inspect rival map →
+                        View their map →
                       </Link>
                     )}
                   </div>
@@ -725,7 +725,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                   <div className="flex flex-col justify-between rounded-xl border border-amber-200/80 bg-amber-50/40 p-3 text-xs">
                     <div>
                       <span className="font-mono-meta text-[10px] font-bold uppercase text-amber-900">
-                        Suggested Falsifier
+                        Suggested Test
                       </span>
                       <p className="mt-1 text-[11px] text-[var(--ink-primary)]">
                         <strong>IF:</strong> {stressTest.suggested_criterion.trigger}
@@ -952,7 +952,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                     rows={2}
                     value={editingNode.note ?? ''}
                     onChange={(e) => updateNode(editingNode.local_id, { note: e.target.value || null })}
-                    placeholder="Add personal nuance or context…"
+                    placeholder="Add a short note…"
                     className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs focus:border-[var(--ink-primary)] focus:outline-none"
                   />
                 </div>
@@ -1059,7 +1059,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                     <div className="mb-1.5 flex items-center justify-between rounded-lg bg-[var(--actor-a-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--actor-a-text)]">
                       <span className="inline-flex items-center gap-1">
                         <GitFork className="h-3 w-3" />
-                        Tweaking wording (linked to shared concept)
+                        Editing wording (linked to shared claim)
                       </span>
                       <button type="button" onClick={() => setForkParentId(null)}>
                         ×
@@ -1122,7 +1122,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
 
                   {filteredSuggestions.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-[var(--border-hairline)] px-3 py-2.5 text-xs text-[var(--ink-muted)]">
-                      No exact matches — hit <strong>Add</strong> above to create yours.
+                      No matches yet. Hit <strong>Add</strong> above to create yours.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
@@ -1275,7 +1275,7 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                   What would change your mind?
                 </h2>
                 <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                  One falsifiable trigger that would shift your bet.
+                  One concrete thing that would change your bet.
                 </p>
 
                 <div className="mt-4 space-y-3 overflow-y-auto">
@@ -1529,13 +1529,13 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
 
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold text-[var(--ink-secondary)]">
-                      Written position in Markdown (optional — supplements the flowchart)
+                      Written position (optional, Markdown)
                     </label>
                     <textarea
                       rows={4}
                       value={essayMarkdown}
                       onChange={(e) => setEssayMarkdown(e.target.value)}
-                      placeholder="Add nuance, caveats, or a linear narrative in Markdown (## headings, **bold**, lists, links)..."
+                      placeholder="Write out the longer version, caveats, or links in Markdown..."
                       className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono-meta text-xs"
                     />
                   </div>

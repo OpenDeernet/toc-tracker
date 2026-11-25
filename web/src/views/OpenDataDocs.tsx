@@ -30,42 +30,42 @@ const ENDPOINTS = [
   {
     method: 'GET',
     path: '/api/v1/actors',
-    desc: 'All mapped actors/orgs with summaries, primary bets, key cruxes, and tags. Supports ?q=, ?tag=, ?kind=.',
+    desc: 'All actors and orgs with summaries, main bets, key cruxes, and tags. Supports ?q=, ?tag=, ?kind=.',
   },
   {
     method: 'GET',
     path: '/api/v1/actors/dario-amodei',
-    desc: 'Full Theory of Change snapshot history, nodes, edges, citations, update criteria, and concept catalog for any handle.',
+    desc: 'Full snapshot history, nodes, edges, citations, update criteria, and concept list for any handle.',
   },
   {
     method: 'GET',
     path: '/api/v1/actors/dario-amodei/export?format=json',
-    desc: 'Portable single-file toc-schema/v1 JSON export (also supports ?format=markdown for LessWrong / Substack).',
+    desc: 'Single-file toc-schema/v1 JSON export (or ?format=markdown for plain text / LessWrong / Substack).',
   },
   {
     method: 'GET',
     path: '/api/v1/compare?a=dario-amodei&b=eliezer-yudkowsky',
-    desc: 'Structured side-by-side diff, shared ground, earliest-split diagnostic, and ranked crux disagreements.',
+    desc: 'Side-by-side diff, shared premises, earliest split, and ranked disagreements.',
   },
   {
     method: 'GET',
     path: '/api/v1/cruxes',
-    desc: 'Contested field claims ranked by spread & stance split, with supporters and skeptics per root concept.',
+    desc: 'Contested claims ranked by spread and disagreement, with who agrees and who is skeptical.',
   },
   {
     method: 'GET',
     path: '/api/v1/intelligence/field',
-    desc: 'Computed field analytics: neglected bottlenecks, sharpest fault-line pairs, cross-camp allies, and unfalsifiable hotspots.',
+    desc: 'Field stats: underworked bottlenecks, sharp splits, cross-camp overlap, and claims missing update criteria.',
   },
   {
     method: 'GET',
     path: '/api/v1/concepts',
-    desc: 'Canonical concept registry + forked phrasings with parent_concept_id / root_concept_id lineage.',
+    desc: 'Shared concept list plus forked phrasings (linked by parent_concept_id and root_concept_id).',
   },
   {
     method: 'GET',
     path: '/api/v1/archive/records',
-    desc: 'Live Arweave permanent transaction index mapping every actor snapshot to its verifiable arweave.net URL.',
+    desc: 'Arweave transaction index linking each snapshot to its arweave.net URL.',
   },
 ];
 
@@ -157,10 +157,9 @@ export function OpenDataDocs() {
           Open Data & API
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--ink-secondary)]">
-          Every Theory of Change, concept lineage, comparison diff, and update criterion on{' '}
-          <strong className="text-[var(--ink-primary)]">toctracker.com</strong> is freely readable with zero
-          API key required. Pull the JSON into notebooks, run your own clustering, or mirror the permanent
-          Arweave archive directly.
+          All maps, comparisons, and update criteria on{' '}
+          <strong className="text-[var(--ink-primary)]">toctracker.com</strong> are open and readable with no API
+          key. Pull the JSON into scripts or notebooks, or read directly from Arweave.
         </p>
 
         {/* Obvious 1-Click Copy for AI Agents Banner */}
@@ -171,11 +170,11 @@ export function OpenDataDocs() {
             </div>
             <div>
               <div className="text-sm font-bold text-[var(--ink-primary)]">
-                Pipe into Claude, Cursor, Codex, or your own agent
+                Copy for Claude, Cursor, Codex, or another agent
               </div>
               <p className="mt-0.5 text-xs text-[var(--ink-secondary)]">
-                Copies a clean plain-text spec (<code className="font-mono-meta">/llms.txt</code>) with all
-                API endpoints, schema rules, Arweave GraphQL query, and all {health?.actors_count ?? 26} actor handles.
+                Copies <code className="font-mono-meta">/llms.txt</code> with every API endpoint, the schema, the
+                Arweave GraphQL query, and all {health?.actors_count ?? 26} handles.
               </p>
             </div>
           </div>
@@ -217,8 +216,7 @@ export function OpenDataDocs() {
           <h2 className="text-base font-bold text-[var(--ink-primary)]">Free Read API (No Auth Required)</h2>
         </div>
         <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-          All read endpoints return JSON and set permissive CORS headers so browser apps, scripts, and AI
-          agents can query them directly.
+          All read endpoints return JSON with open CORS headers.
         </p>
 
         <div className="mt-4 space-y-2.5">
@@ -339,7 +337,7 @@ export function OpenDataDocs() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-4 py-2.5">
               <div className="flex items-center gap-2 text-xs font-bold text-[var(--ink-primary)]">
                 <ShieldCheck className="h-4 w-4 text-emerald-700" />
-                Live Archive Verification Index
+                Arweave Archive Index
               </div>
               <span className="font-mono-meta text-[11px] text-[var(--ink-secondary)]">
                 {archive.archived_count} / {archive.total_snapshots} archived on Arweave ({archive.adapter})
@@ -394,26 +392,28 @@ export function OpenDataDocs() {
       <section className="mt-10 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-[var(--ink-primary)]" />
-          <h2 className="text-base font-bold text-[var(--ink-primary)]">Schema Invariants (`toc-schema/v1`)</h2>
+          <h2 className="text-base font-bold text-[var(--ink-primary)]">
+            Schema (<code className="font-mono-meta text-sm">toc-schema/v1</code>)
+          </h2>
         </div>
         <ul className="mt-3 space-y-2 text-xs leading-relaxed text-[var(--ink-secondary)]">
           <li>
-            <strong className="text-[var(--ink-primary)]">5-Stage Causal Spine:</strong> Every node belongs to{' '}
+            <strong className="text-[var(--ink-primary)]">Five stages:</strong> Every node belongs to{' '}
             <code className="font-mono-meta">premise → bottleneck → intervention → bet → outcome</code>, with
-            directed acyclic edges (<code className="font-mono-meta">leads_to</code>,{' '}
+            directed edges (<code className="font-mono-meta">leads_to</code>,{' '}
             <code className="font-mono-meta">mitigates</code>,{' '}
             <code className="font-mono-meta">depends_on</code>,{' '}
             <code className="font-mono-meta">conflicts_with</code>).
           </li>
           <li>
-            <strong className="text-[var(--ink-primary)]">Forkable Canonical Lineage:</strong> Custom phrasings
-            preserve exact wording via <code className="font-mono-meta">parent_concept_id</code> while
-            retaining <code className="font-mono-meta">root_concept_id</code> so comparisons aggregate cleanly.
+            <strong className="text-[var(--ink-primary)]">Forked phrasings:</strong> Custom wording keeps a{' '}
+            <code className="font-mono-meta">parent_concept_id</code> and shared{' '}
+            <code className="font-mono-meta">root_concept_id</code> so comparisons still line up.
           </li>
           <li>
-            <strong className="text-[var(--ink-primary)]">Anti-False-Precision & Falsifiability:</strong> Exact
-            numeric credences require a written rationale (≥10 chars), and every published snapshot requires at
-            least one concrete <code className="font-mono-meta">IF / THEN</code> update criterion.
+            <strong className="text-[var(--ink-primary)]">Credences &amp; update criteria:</strong> Exact{' '}
+            <code className="font-mono-meta">%</code> numbers require a short note (10+ chars), and every published
+            map requires at least one <code className="font-mono-meta">IF / THEN</code> update criterion.
           </li>
         </ul>
       </section>

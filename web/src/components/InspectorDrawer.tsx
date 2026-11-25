@@ -33,7 +33,7 @@ export function InspectorDrawer({
       <div className="flex items-start justify-between gap-2">
         <div className="font-mono-meta text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
           {node.stage}
-          {node.is_load_bearing_crux ? ' · LOAD-BEARING CRUX' : ''}
+          {node.is_load_bearing_crux ? ' · KEY CRUX' : ''}
         </div>
         <button
           onClick={onClose}
@@ -71,7 +71,7 @@ export function InspectorDrawer({
               {credencePill(node.credence)}
             </span>
             <span className="text-xs font-semibold text-[var(--ink-primary)]">
-              {node.credence.mode === 'numeric' ? 'Numeric Justification' : 'Qualitative Credence'}
+              {node.credence.mode === 'numeric' ? 'Why this %' : 'Credence'}
             </span>
           </div>
           {node.credence.numeric_rationale && (
@@ -163,7 +163,7 @@ export function InspectorDrawer({
           to={`/concept/${encodeURIComponent(rootId)}`}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--ink-primary)] transition hover:bg-[var(--bg-subtle)]"
         >
-          See who disagrees ({usageCount} {usageCount === 1 ? 'actor' : 'actors'})
+          See all views ({usageCount})
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>

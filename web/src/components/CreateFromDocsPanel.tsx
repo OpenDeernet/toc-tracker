@@ -217,7 +217,7 @@ export function CreateFromDocsPanel({
                 rows={3}
                 value={rawNotes}
                 onChange={(e) => setRawNotes(e.target.value)}
-                placeholder="Paste excerpts, interview notes, or your rough thesis…"
+                placeholder="Paste excerpts, interview notes, or a rough write-up…"
                 className="w-full flex-1 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs focus:border-[var(--ink-primary)] focus:outline-none"
               />
 
@@ -257,7 +257,7 @@ export function CreateFromDocsPanel({
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-hairline)] pt-3">
             <span className="text-[11px] text-[var(--ink-muted)]">
-              Extracts claims mapped to canonical concepts with verbatim quotes for review before loading.
+              Pulls claims and quotes from your sources so you can pick what to load.
             </span>
             <button
               type="submit"

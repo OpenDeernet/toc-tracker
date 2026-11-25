@@ -463,13 +463,14 @@ RULES:
 3. Capture 1-2 explicitly REJECTED or skeptical paths (`stance: "rejected"`) if the author argues against other safety approaches.
 4. For every node, include a short VERBATIM quote (`quote`) from the source text and the `source_url` (if present). Never invent quotes.
 5. Default credences to qualitative bands ("very_low"|"low"|"medium"|"high"|"very_high"). ONLY include `percent` (0-100) if the author explicitly states a number, and put the quote in `numeric_rationale`.
-6. Extract at least 1 `update_criteria` item. If the author didn't explicitly state one, propose the sharpest falsification test for their crux and prefix trigger with "[Suggested] ".
+6. Extract at least 1 `update_criteria` item. If the author didn't explicitly state one, propose a concrete test for their crux and prefix trigger with "[Suggested] ".
+7. Write in plain, direct English. Avoid AI filler ("nuanced", "crisp", "delve", "landscape", "crucial", "holistic", "leverage", dramatic em-dashes).
 
 RETURN STRICT JSON ONLY matching this exact schema:
 {{
   "actor_name_hint": "string or null",
   "actor_role_hint": "string or null",
-  "summary": "1 crisp sentence explaining why they do what they do",
+  "summary": "1 direct sentence explaining why they do what they do",
   "new_concepts": [
     {{ "temp_id": "new_1", "stage": "premise|bottleneck|intervention|bet|outcome", "title": "<=100 chars", "description": "1 sentence", "parent_concept_id": "existing_id or null" }}
   ],
@@ -483,7 +484,7 @@ RETURN STRICT JSON ONLY matching this exact schema:
       "band": "very_low|low|medium|high|very_high or null (null for bet/outcome)",
       "percent": null or 0..100,
       "numeric_rationale": "string or null",
-      "note": "brief 1-sentence nuance or null",
+      "note": "brief 1-sentence note or null",
       "quote": "short verbatim quote from source or null",
       "source_label": "string or null",
       "source_url": "url or null"
@@ -885,7 +886,7 @@ fn extract_heuristic_multi(
         actor_name_hint: None,
         actor_role_hint: None,
         summary: first_sentence.unwrap_or_else(|| {
-            "Draft mapped onto canonical AI Safety concepts — refine credences and update criteria."
+            "Starting draft from your sources. Edit the claims, credences, and update criteria."
                 .into()
         }),
         nodes,
@@ -989,9 +990,9 @@ async fn stress_test_with_llm(
 
     let today = chrono::Utc::now().format("%B %Y");
     let prompt = format!(
-        r#"Stress-test this AI Safety Theory of Change like a sharp, charitable LessWrong peer reviewer.
+        r#"Review this AI Safety Theory of Change like a sharp, fair peer reviewer.
 Today's date is {today}. Keep timeframes in the future relative to {today}.
-Be concise, specific, and zero-fluff.
+Write in plain, direct English. Avoid AI filler ("nuanced", "crisp", "delve", "landscape", "crucial", "holistic", "leverage", dramatic em-dashes).
 
 THEORY OF CHANGE ({} edges):
 {}
@@ -1002,14 +1003,14 @@ CURRENT UPDATE CRITERIA:
 RETURN STRICT JSON ONLY:
 {{
   "hidden_assumptions": [
-    {{ "title": "concise unstated premise <=90 chars", "why_it_matters": "1 crisp sentence explaining why their bet fails if this is false" }}
+    {{ "title": "short unstated premise <=90 chars", "why_it_matters": "1 plain sentence explaining why their bet fails if this is false" }}
   ],
   "steelman_objection": {{
-    "from_perspective": "e.g. Pause/Halt advocate or AI Control researcher",
-    "argument": "2 crisp sentences giving the strongest non-strawman critique of this chain"
+    "from_perspective": "e.g. Pause advocate or AI Control researcher",
+    "argument": "2 plain sentences giving the strongest fair critique of this plan"
   }},
   "suggested_criterion": {{
-    "trigger": "concrete observable evidence that would falsify their key crux",
+    "trigger": "concrete observable event that would falsify their key crux",
     "timeframe": "e.g. by Q4 2027",
     "pivot_action": "specific change in bet or credence"
   }}
@@ -1275,8 +1276,8 @@ fn stress_test_deterministic(
 
     if steelman.is_none() {
         steelman = Some(SteelmanObjection {
-            from_perspective: "Skeptical peer reviewer".into(),
-            argument: "Even if your upstream premises hold, why does this specific intervention outperform rival approaches on margin per researcher-year? Adding one explicitly rejected alternative sharpens the crux.".into(),
+            from_perspective: "Outside critique".into(),
+            argument: "Even if your premises are right, why does this beat the main alternatives? Marking one approach you're skeptical of makes the trade-off clearer.".into(),
             rival_handle: None,
         });
     }

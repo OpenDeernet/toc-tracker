@@ -1,35 +1,35 @@
 # [toctracker.com](https://toctracker.com) — AI Safety Theory of Change Tracker
 
-An open-source, open-data platform for mapping, comparing, and stress-testing Theories of Change across the AI Safety community.
+Open-source, open-data tracker for AI Safety Theories of Change.
 
-Live site: **[https://toctracker.com](https://toctracker.com)** · Open Data & API docs: **[https://toctracker.com/data](https://toctracker.com/data)**
+Live site: **[https://toctracker.com](https://toctracker.com)** · Open Data & API: **[https://toctracker.com/data](https://toctracker.com/data)** · Agent spec: **[https://toctracker.com/llms.txt](https://toctracker.com/llms.txt)**
 
 ---
 
 ## Why This Exists
 
-AI Safety theories of change are scattered across LessWrong posts, podcasts, org pages, and private conversations — making it hard to see:
-1. **Why** two researchers who agree on the threat model are making completely different bets.
-2. **Where** they actually split (their earliest load-bearing disagreement).
-3. **What observable evidence** would change their minds (**update criteria**).
+AI Safety theories of change live across LessWrong posts, podcasts, org pages, and private docs. That makes three simple questions weirdly hard to answer:
+1. **Why** do two researchers who agree on the threat model make totally different bets?
+2. **Where** do they actually split?
+3. **What** would change their minds?
 
-## Key Features
+## What's Inside
 
-- **5-Stage Causal Spine (`Premise → Bottleneck → Intervention → Bet → Outcome`):** World-space resizable & fullscreen swimlane flowcharts keep any two maps alignable without forcing a rigid ontology.
-- **Linear Written Positions & Influences:** Every profile pairs its flowchart with an optional **Markdown written essay** (*In Their Own Words*), **Influences & Key Reading** links, **Update Criteria** watchlist, and versioned **Changelog**.
-- **Forkable Community Concepts:** Fork canonical claims into your own wording while keeping `root_concept_id` lineage so comparisons and field-wide stats still line up.
-- **Side-by-Side Diff & Earliest-Split Diagnostic (`/compare`):** Overlay any two actors with purple/green/split-border ownership, an automatic earliest-split sentence, and dynamic 1200×630 OpenGraph PNG cards.
-- **Field Disagreements, Blindspots & Fault Lines (`/cruxes`):** Pure-Rust graph analytics across all mapped actors surfacing contested claims, neglected bottlenecks, sharpest same-diagnosis/opposite-bet pairs, and cross-camp allies.
-- **Opinionated Epistemic Guardrails:** Qualitative credences (`Very Low`–`Very High`) by default; exact `%` requires a written rationale (≥10 chars); every published map requires at least one concrete `IF → THEN` update criterion.
-- **Studio + Quote-Locked AI Extraction & Stress-Testing (`/studio`):** Fork a template, paste URLs/text for quote-locked drafting (OpenRouter / Anthropic / OpenAI), or run the Silent Graph Linter & Deep Stress-Test for hidden assumptions and steelman objections.
-- **Permanent Open Data Layer (`/data`):** Free CORS-open JSON/Markdown Read API + automatic **Arweave (ANS-104 Ed25519 via ArDrive Turbo)** archiving.
+- **Five-stage flowcharts (`Premise → Bottleneck → Intervention → Bet → Outcome`):** Every map uses the same 5 columns so any two maps line up without forcing everyone into identical wording.
+- **Profiles, written positions & reading lists:** Each profile can include a one-line stance, a Markdown write-up (*In Their Own Words*), *Influences & Key Reading* links, *Update Criteria*, and version history.
+- **Forked claims:** Edit any existing claim into your own wording while keeping its `root_concept_id` so comparisons still match up.
+- **Side-by-side diff (`/compare`):** Overlay any two actors (purple vs. green, split border when shared), see the earliest point they diverge, and share dynamic 1200×630 PNG cards.
+- **Disagreements, blindspots & fault lines (`/cruxes`):** Find contested claims, bottlenecks people agree on with few working on them, pairs with the same diagnosis and opposite bets, and cross-camp overlap.
+- **Credence & update checks:** Qualitative bands (`Very Low`–`Very High`) by default; exact `%` numbers require a short note (10+ chars); every published flowchart requires at least one `IF → THEN` update criterion.
+- **Studio (`/studio`):** Build from scratch, fork an existing map, paste URLs/text to draft claims with quotes, or run a stress-test on your draft.
+- **Open data & Arweave archive (`/data`):** Free CORS-open JSON/Markdown API, `/llms.txt` for agents, and automatic **Arweave (ANS-104 Ed25519 via ArDrive Turbo)** archiving.
 
-## Architecture
+## Repo Layout
 
-- **`crates/toc-core`** — Domain types (`toc-schema/v1`), strict epistemic validation, 2-actor diff & earliest-split engine, field intelligence analytics, silent graph linter, Markdown/JSON export, and seed bundle loader.
-- **`crates/toc-storage`** — `StorageAdapter` trait, pure-Rust ANS-104 Ed25519 DataItem builder (`TurboArweaveAdapter`), `LocalMockAdapter`, and AES-256-GCM encryption at rest (`ring`) for user Ed25519 signing keys.
-- **`crates/toc-server`** — Single-binary Rust `axum` server hosting the public REST API, PostgreSQL (`sqlx`) repository (with zero-config `MemoryRepo` fallback), background Arweave publisher, X/GitHub/Resend auth, SSRF/XSS/rate-limit protections, and `resvg` dynamic OG PNG cards.
-- **`web/`** — Vite + React + TypeScript + Tailwind CSS + `@xyflow/react` frontend with editorial design tokens in `web/src/styles/tokens.css`.
+- **`crates/toc-core`** — Schema (`toc-schema/v1`), validation, 2-actor diff, field stats, graph checks, Markdown/JSON export, and seed loader.
+- **`crates/toc-storage`** — `StorageAdapter` trait, pure-Rust ANS-104 Ed25519 DataItem builder (`TurboArweaveAdapter`), `LocalMockAdapter`, and AES-256-GCM encryption (`ring`) for signing keys.
+- **`crates/toc-server`** — Single-binary Rust `axum` server (REST API, Postgres `sqlx` + in-memory fallback, background Arweave publisher, X/GitHub/Resend auth, SSRF/XSS/rate-limit guards, and `resvg` OG PNG cards).
+- **`web/`** — Vite + React + TypeScript + Tailwind CSS + `@xyflow/react` frontend.
 
 ## Quick Start
 

@@ -1649,36 +1649,36 @@ async fn llms_txt(State(state): State<Arc<AppState>>) -> impl IntoResponse {
   GET {base}/api/v1/actors/{{handle}}/export?format=markdown
   GET {base}/api/v1/actors/{{handle}}/export?format=json
 
-- Side-by-side comparison, shared ground, earliest-split diagnostic & ranked disagreements:
+- Side-by-side comparison, shared premises, earliest split & ranked disagreements:
   GET {base}/api/v1/compare?a={{handle_a}}&b={{handle_b}}
 
-- Most contested field claims (supporters vs. skeptics per canonical root concept):
+- Contested claims (who agrees vs. who is skeptical per root concept):
   GET {base}/api/v1/cruxes
 
-- Computed field intelligence (neglected bottlenecks, sharpest fault lines, cross-camp allies, unfalsifiable hotspots):
+- Field stats (underworked bottlenecks, sharp splits, cross-camp overlap, claims missing update criteria):
   GET {base}/api/v1/intelligence/field
 
-- Canonical concept registry + forked phrasings (parent_concept_id -> root_concept_id):
+- Shared concepts + forked phrasings (parent_concept_id -> root_concept_id):
   GET {base}/api/v1/concepts
   GET {base}/api/v1/concepts/{{root_id}}
 
-- Live Arweave permanent archive index:
+- Arweave archive index:
   GET {base}/api/v1/archive/records
 
 ## Schema Summary (toc-schema/v1)
 
-Every Theory of Change maps onto a 5-stage directed acyclic spine:
+Every Theory of Change maps onto 5 stages:
 1. premise      (What happens by default?)
-2. bottleneck   (What specific obstacle blocks a good outcome?)
-3. intervention (What mechanism shifts the trajectory?)
-4. bet          (What concrete work are they doing right now?)
+2. bottleneck   (What gets in the way of a good outcome?)
+3. intervention (What actually helps?)
+4. bet          (What are they working on right now?)
 5. outcome      (What does success look like?)
 
-Key invariants:
-- Nodes carry `stance` ("active" | "rejected" | "deprioritized" | "open_crux"), optional `credence` (qualitative band or exact percent + required rationale >= 10 chars), `is_load_bearing_crux`, `note`, and `citations`.
-- Every snapshot requires >= 1 concrete `update_criteria` item (`trigger` + `pivot_action` + `status`).
-- Snapshots may include `essay_markdown` (linear prose in the author's own words) and actors may include `one_line_stance`, `contact_preference`, and `references`.
-- Forked concepts preserve custom phrasing while sharing `root_concept_id` for lossless comparison.
+Key rules:
+- Nodes carry `stance` ("active" | "rejected" | "deprioritized" | "open_crux"), optional `credence` (qualitative band or exact percent + required note >= 10 chars), `is_load_bearing_crux`, `note`, and `citations`.
+- Every snapshot requires >= 1 `update_criteria` item (`trigger` + `pivot_action` + `status`).
+- Snapshots and actors may include `essay_markdown` (Markdown written position), `one_line_stance`, `contact_preference`, and `references`.
+- Forked concepts keep custom wording while sharing `root_concept_id` so comparisons still line up.
 
 ## Permanent Arweave Archive (ANS-104 via ArDrive Turbo)
 
@@ -1799,7 +1799,7 @@ async fn spa_actor_html(
     inject_og_meta(
         html,
         "toctracker.com — AI Safety Theory of Change Tracker",
-        "Compare AI Safety Theories of Change side-by-side: premises, bottlenecks, interventions, bets, and falsifiable update criteria.",
+        "Compare AI Safety Theories of Change side by side: premises, bottlenecks, bets, and what would change people's minds.",
         &img,
         base,
     )
@@ -1813,7 +1813,7 @@ async fn spa_compare_html(
     let base = state.public_base_url.trim_end_matches('/');
     if let (Some(a), Some(b)) = (params.get("a"), params.get("b")) {
         let title = format!("{a} vs {b} — Side-by-Side Comparison | toctracker.com");
-        let desc = "Compare AI Safety Theories of Change side-by-side and pinpoint exact cruxes.";
+        let desc = "Compare two AI Safety Theories of Change side by side.";
         let img = format!(
             "{base}/og/compare?a={}&b={}",
             urlencoding::encode(a),
@@ -1843,7 +1843,7 @@ async fn spa_index_html(State(state): State<Arc<AppState>>) -> Html<String> {
     inject_og_meta(
         html,
         "toctracker.com — What AI Safety actors bet on, and where they split.",
-        "Compare AI Safety Theories of Change side-by-side: premises, bottlenecks, interventions, bets, and falsifiable update criteria.",
+        "Compare AI Safety Theories of Change side by side: premises, bottlenecks, bets, and what would change people's minds.",
         &img,
         base,
     )

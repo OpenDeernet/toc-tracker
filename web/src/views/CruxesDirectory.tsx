@@ -44,7 +44,7 @@ export function CruxesDirectory() {
           </h1>
           {intel && (
             <p className="mt-1 text-xs text-[var(--ink-muted)]">
-              Computed across {intel.total_actors} mapped Theories of Change and {intel.total_concepts} linked claims.
+              Across {intel.total_actors} Theories of Change and {intel.total_concepts} claims.
             </p>
           )}
         </div>
@@ -142,7 +142,7 @@ export function CruxesDirectory() {
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/40 p-3.5">
                       <div className="text-[11px] font-bold text-emerald-900">
-                        Bullish / Betting ({c.supporters.length})
+                        Agree / Betting ({c.supporters.length})
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {c.supporters.length > 0 ? (
@@ -204,11 +204,11 @@ export function CruxesDirectory() {
             <div className="flex items-center gap-2">
               <Radar className="h-4 w-4 text-amber-700" />
               <h2 className="text-base font-bold text-[var(--ink-primary)]">
-                High-Consensus Bottlenecks with Thin Dedicated Coverage
+                Agreed bottlenecks with few people working on them
               </h2>
             </div>
             <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-              Obstacles multiple actors rate as serious, compared against how many treat them as their primary crux.
+              Problems multiple people flag as serious, compared with how many treat them as their main focus.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -257,11 +257,11 @@ export function CruxesDirectory() {
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-rose-700" />
                 <h2 className="text-base font-bold text-[var(--ink-primary)]">
-                  Widely Held Claims Missing Explicit Update Criteria
+                  Common claims with no update criteria
                 </h2>
               </div>
               <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                High-traffic beliefs where most holders haven't stated a concrete IF/THEN trigger that would change their mind.
+                Widely held beliefs where most people haven&apos;t said what would change their mind.
               </p>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -296,11 +296,11 @@ export function CruxesDirectory() {
             <div className="flex items-center gap-2">
               <GitCompareArrows className="h-4 w-4 text-rose-700" />
               <h2 className="text-base font-bold text-[var(--ink-primary)]">
-                Sharpest Fault Lines (Same Diagnosis, Opposite Bet)
+                Same diagnosis, opposite bet
               </h2>
             </div>
             <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-              Pairs who agree on upstream premises or bottlenecks yet split directly on what works.
+              Pairs who agree on the problem or bottleneck, but split on what actually works.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -339,10 +339,10 @@ export function CruxesDirectory() {
           {intel.hidden_allies.length > 0 && (
             <section>
               <h2 className="text-base font-bold text-[var(--ink-primary)]">
-                Cross-Camp Overlap (Unexpected Allies)
+                Unexpected overlap
               </h2>
               <p className="mt-1 text-xs text-[var(--ink-secondary)]">
-                People in different AI Safety camps who share multiple core premises with zero direct disagreements.
+                People in different camps who share several premises and have no direct disagreements.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {intel.hidden_allies.map((ha) => (
