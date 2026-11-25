@@ -601,7 +601,8 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
       citations: [],
     };
 
-    // Auto-wire cleanly from active nodes in the previous stage
+    // Keep graphs sparse: only auto-wire 1 arrow when there's a single node in the previous column
+    // (or a single currently-selected node in the previous column) instead of dense all-to-all wiring.
     const prevStageIdx = STAGES.findIndex((s) => s.key === stage) - 1;
     const newEdges: SnapshotEdge[] = [];
     if (prevStageIdx >= 0) {
@@ -609,12 +610,18 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
       const prevNodes = nodes.filter(
         (n) => n.stage === prevStageKey && (n.stance === 'active' || n.stance === 'open_crux')
       );
-      for (const pn of prevNodes) {
-        const edgeExists = edges.some((e) => e.source_local_id === pn.local_id && e.target_local_id === localId);
+      const selectedPrev = editingLocalId
+        ? prevNodes.find((n) => n.local_id === editingLocalId)
+        : undefined;
+      const autoSource = selectedPrev ?? (prevNodes.length === 1 ? prevNodes[0] : undefined);
+      if (autoSource) {
+        const edgeExists = edges.some(
+          (e) => e.source_local_id === autoSource.local_id && e.target_local_id === localId
+        );
         if (!edgeExists) {
           newEdges.push({
             id: makeId('e'),
-            source_local_id: pn.local_id,
+            source_local_id: autoSource.local_id,
             target_local_id: localId,
             relation: defaultRelationForStage(stage),
             note: null,
@@ -1505,6 +1512,128 @@ export function Studio({ user, onOpenAuth, onPublished }: StudioProps) {
                     </button>
                   </div>
                 </div>
+
+                {/* Connections / Arrows editor for this node */}
+                {(() => {
+                  const nodeEdges = edges.filter(
+                    (e) => e.source_local_id === editingNode.local_id || e.target_local_id === editingNode.local_id
+                  );
+                  const stageOrder = (st: Stage) => STAGES.findIndex((s) => s.key === st);
+                  const curStageIdx = stageOrder(editingNode.stage);
+                  const connectTargets = nodes
+                    .filter(
+                      (n) =>
+                        n.local_id !== editingNode.local_id &&
+                        (n.stance === 'active' || n.stance === 'open_crux') &&
+                        !edges.some(
+                          (e) => e.source_local_id === editingNode.local_id && e.target_local_id === n.local_id
+                        )
+                    )
+                    .sort((a, b) => {
+                      const aNext = stageOrder(a.stage) === curStageIdx + 1 ? 0 : stageOrder(a.stage) > curStageIdx ? 1 : 2;
+                      const bNext = stageOrder(b.stage) === curStageIdx + 1 ? 0 : stageOrder(b.stage) > curStageIdx ? 1 : 2;
+                      return aNext - bNext || stageOrder(a.stage) - stageOrder(b.stage);
+                    });
+
+                  return (
+                    <div className="mt-4 border-t border-[var(--border-hairline)] pt-3.5">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-xs font-semibold text-[var(--ink-secondary)]">
+                          Arrows ({nodeEdges.length})
+                        </label>
+                        {nodeEdges.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pushUndo();
+                              setEdges((prev) =>
+                                prev.filter(
+                                  (e) =>
+                                    e.source_local_id !== editingNode.local_id &&
+                                    e.target_local_id !== editingNode.local_id
+                                )
+                              );
+                            }}
+                            className="text-[10px] font-semibold text-rose-700 hover:underline"
+                          >
+                            Disconnect all
+                          </button>
+                        )}
+                      </div>
+
+                      {nodeEdges.length === 0 ? (
+                        <p className="text-[11px] text-[var(--ink-muted)]">
+                          No arrows attached. Pick a node below or drag between dots on the canvas.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {nodeEdges.map((edge) => {
+                            const isOutgoing = edge.source_local_id === editingNode.local_id;
+                            const otherId = isOutgoing ? edge.target_local_id : edge.source_local_id;
+                            const otherNode = nodes.find((n) => n.local_id === otherId);
+                            const otherTitle = otherNode
+                              ? conceptsMap[otherNode.concept_id]?.title ?? otherNode.concept_id
+                              : otherId;
+                            return (
+                              <div
+                                key={edge.id}
+                                className="flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2 py-1.5 text-[11px]"
+                              >
+                                <span className="shrink-0 font-mono-meta text-[10px] text-[var(--ink-muted)]">
+                                  {isOutgoing ? '→' : '←'}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate font-medium text-[var(--ink-primary)]" title={otherTitle}>
+                                  {otherTitle}
+                                </span>
+                                <select
+                                  value={edge.relation ?? ''}
+                                  onChange={(e) =>
+                                    handleUpdateEdgeRelation(
+                                      edge.id,
+                                      (e.target.value || null) as EdgeRelation | null
+                                    )
+                                  }
+                                  className="rounded border border-[var(--border-hairline)] bg-white px-1.5 py-0.5 font-mono-meta text-[10px] text-[var(--ink-secondary)]"
+                                >
+                                  <option value="leads_to">leads to</option>
+                                  <option value="mitigates">mitigates</option>
+                                  <option value="depends_on">depends on</option>
+                                  <option value="conflicts_with">conflicts with</option>
+                                  <option value="">no label</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEdge(edge.id)}
+                                  title="Delete arrow"
+                                  className="rounded p-0.5 text-[var(--ink-muted)] hover:bg-rose-50 hover:text-rose-700"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {connectTargets.length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) handleConnectNodes(editingNode.local_id, e.target.value);
+                          }}
+                          className="mt-2 w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--ink-secondary)] focus:border-[var(--ink-primary)] focus:outline-none"
+                        >
+                          <option value="">+ Connect arrow to…</option>
+                          {connectTargets.map((n) => (
+                            <option key={n.local_id} value={n.local_id}>
+                              [{n.stage}] {conceptsMap[n.concept_id]?.title ?? n.concept_id}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="mt-auto border-t border-[var(--border-hairline)] pt-4">
                   <button

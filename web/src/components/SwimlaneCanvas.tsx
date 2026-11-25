@@ -271,6 +271,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             source: e.source_local_id,
             target: e.target_local_id,
             type: 'default',
+            interactionWidth: singleEditable ? 24 : 8,
             label: e.relation ? e.relation.replace('_', ' ') : undefined,
             labelStyle: {
               fontSize: 10,
@@ -543,6 +544,26 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       ? props.edges.find((e) => e.id === props.selectedEdgeId) ?? null
       : null;
 
+  // Allow Backspace / Delete to remove the currently selected arrow on canvas
+  const onDeleteEdgeProp = props.mode === 'single' ? props.onDeleteEdge : undefined;
+  const onSelectEdgeProp = props.mode === 'single' ? props.onSelectEdge : undefined;
+  useEffect(() => {
+    if (!isEditable || !selectedEdge) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        onDeleteEdgeProp?.(selectedEdge.id);
+        onSelectEdgeProp?.(null);
+      } else if (e.key === 'Escape') {
+        onSelectEdgeProp?.(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isEditable, selectedEdge, onDeleteEdgeProp, onSelectEdgeProp]);
+
   function handleConnect(conn: Connection) {
     if (
       props.mode === 'single' &&
@@ -620,7 +641,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             </div>
           ) : isEditable ? (
             <span className="text-[var(--ink-muted)]">
-              Click node or arrow to edit · Drag handles to connect · Click + in any column to add
+              Click any arrow to relabel or delete · Drag dots to connect · Click a card to edit its arrows
             </span>
           ) : (
             <span className="text-[var(--ink-muted)]">
