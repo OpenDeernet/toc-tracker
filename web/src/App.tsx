@@ -4,6 +4,7 @@ import { api } from './api/client';
 import type { OwnedActorLink, PublicUser } from './types';
 import { TopNav } from './components/TopNav';
 import { AuthModal } from './components/AuthModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExploreHome } from './views/ExploreHome';
 import { ActorProfile } from './views/ActorProfile';
 import { CompareDiff } from './views/CompareDiff';
@@ -50,38 +51,40 @@ export function App() {
           onOpenAuth={() => setAuthOpen(true)}
           onLogout={handleLogout}
         />
-        <Routes>
-          <Route path="/" element={<ExploreHome />} />
-          <Route
-            path="/a/:handle"
-            element={<ActorProfile user={user} isAdmin={isAdmin} onOpenAuth={() => setAuthOpen(true)} />}
-          />
-          <Route
-            path="/profile"
-            element={
-              <MyProfile
-                user={user}
-                ownedActors={ownedActors}
-                onOpenAuth={() => setAuthOpen(true)}
-                onSaved={refreshMe}
-              />
-            }
-          />
-          <Route path="/compare" element={<CompareDiff />} />
-          <Route path="/cruxes" element={<CruxesDirectory />} />
-          <Route path="/concept/:rootId" element={<ConceptExplorer />} />
-          <Route path="/data" element={<OpenDataDocs />} />
-          <Route
-            path="/studio"
-            element={
-              <Studio
-                user={user}
-                onOpenAuth={() => setAuthOpen(true)}
-                onPublished={refreshMe}
-              />
-            }
-          />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<ExploreHome />} />
+            <Route
+              path="/a/:handle"
+              element={<ActorProfile user={user} isAdmin={isAdmin} onOpenAuth={() => setAuthOpen(true)} />}
+            />
+            <Route
+              path="/profile"
+              element={
+                <MyProfile
+                  user={user}
+                  ownedActors={ownedActors}
+                  onOpenAuth={() => setAuthOpen(true)}
+                  onSaved={refreshMe}
+                />
+              }
+            />
+            <Route path="/compare" element={<CompareDiff />} />
+            <Route path="/cruxes" element={<CruxesDirectory />} />
+            <Route path="/concept/:rootId" element={<ConceptExplorer />} />
+            <Route path="/data" element={<OpenDataDocs />} />
+            <Route
+              path="/studio"
+              element={
+                <Studio
+                  user={user}
+                  onOpenAuth={() => setAuthOpen(true)}
+                  onPublished={refreshMe}
+                />
+              }
+            />
+          </Routes>
+        </ErrorBoundary>
         <AuthModal
           open={authOpen}
           onClose={() => setAuthOpen(false)}

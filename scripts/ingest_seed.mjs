@@ -211,6 +211,62 @@ const NEAR_NEIGHBOR_ROOTS = [
   },
 ];
 
+// Curated general-purpose options across all 5 columns so any new user has rich, non-person-specific choices
+const STARTER_COLUMN_OPTIONS = [
+  // Premise
+  { id: 'cpt_opt_prem_ai_rd', stage: 'premise', title: 'AI-accelerated R&D drives fast capability takeoff', description: 'Automated AI research compresses years of progress into months.' },
+  { id: 'cpt_opt_prem_open_weights', stage: 'premise', title: 'Open-weight models spread dangerous capabilities widely', description: 'Once frontier weights leak or are released, safeguards can be stripped.' },
+  { id: 'cpt_opt_prem_hard_verify', stage: 'premise', title: 'Alignment is hard to verify before deployment', description: 'Behavioral testing cannot easily distinguish aligned from deceptive systems.' },
+  { id: 'cpt_opt_prem_misuse', stage: 'premise', title: 'Misuse (bio, cyber, persuasion) is a major near-term risk', description: 'Frontier models lower barriers to catastrophic misuse by bad actors.' },
+  { id: 'cpt_opt_prem_power_conc', stage: 'premise', title: 'Automated labor concentrates economic and political power', description: 'Control over frontier AI could permanently disempower most people.' },
+  { id: 'cpt_opt_prem_gradual', stage: 'premise', title: 'Gradual AI rollout gives society room to adapt', description: 'Capabilities arrive unevenly with warning shots rather than a sudden jump.' },
+  { id: 'cpt_opt_prem_scaling_limits', stage: 'premise', title: 'Current LLM scaling hits diminishing returns before AGI', description: 'New paradigms beyond pure pretraining scale are needed for AGI.' },
+
+  // Bottleneck
+  { id: 'cpt_opt_bot_evals_miss', stage: 'bottleneck', title: 'Evaluations miss covert or sandbagged capabilities', description: 'Models may underperform in tests or unlock new abilities only after deployment.' },
+  { id: 'cpt_opt_bot_compute_verify', stage: 'bottleneck', title: 'No reliable way to verify compute or training limits', description: 'Hardware tracking and international verification mechanisms do not exist yet.' },
+  { id: 'cpt_opt_bot_commercial', stage: 'bottleneck', title: 'Commercial incentives reward speed over caution', description: 'Labs face strong revenue and investor pressure to ship ahead of safety checks.' },
+  { id: 'cpt_opt_bot_gov_capacity', stage: 'bottleneck', title: 'Governments lack technical capacity to oversee frontier AI', description: 'Regulators do not have the staff, access, or tools to audit leading models.' },
+  { id: 'cpt_opt_bot_defense_lags', stage: 'bottleneck', title: 'Defensive tech (bio, cyber) lags offensive AI capabilities', description: 'Attackers benefit faster from AI capabilities than defenders do.' },
+  { id: 'cpt_opt_bot_us_china', stage: 'bottleneck', title: 'Weak coordination between US, China, and frontier labs', description: 'Geopolitical rivalry blocks binding international safety agreements.' },
+  { id: 'cpt_opt_bot_generalization', stage: 'bottleneck', title: 'We lack a science of how large neural nets generalize', description: 'Without understanding internal goals, scaling behavior remains unpredictable.' },
+
+  // Intervention
+  { id: 'cpt_opt_int_scalable_oversight', stage: 'intervention', title: 'AI-assisted alignment & scalable oversight', description: 'Using weaker or trusted AI systems to supervise and align stronger models.' },
+  { id: 'cpt_opt_int_safety_cases', stage: 'intervention', title: 'Binding safety cases & pre-deployment release gates', description: 'Requiring structured evidence of safety before training or deploying frontier systems.' },
+  { id: 'cpt_opt_int_formal_verif', stage: 'intervention', title: 'Formal verification & provably safe AI architectures', description: 'Designing systems with mathematical or architectural guarantees against catastrophic behavior.' },
+  { id: 'cpt_opt_int_liability', stage: 'intervention', title: 'Legal liability & insurance for frontier AI harms', description: 'Making labs financially liable for severe harms to align market incentives.' },
+  { id: 'cpt_opt_int_transparency', stage: 'intervention', title: 'Whistleblower protections & frontier lab transparency', description: 'Protecting insiders and requiring public incident and risk reporting.' },
+  { id: 'cpt_opt_int_intl_treaty', stage: 'intervention', title: 'International safety standards & bilateral treaties', description: 'Negotiated global rules and verification around dangerous frontier runs.' },
+  { id: 'cpt_opt_int_bio_defense', stage: 'intervention', title: 'Biosecurity screening & physical pandemic defenses', description: 'DNA synthesis screening, early detection, and rapid physical countermeasures.' },
+  { id: 'cpt_opt_int_field_building', stage: 'intervention', title: 'Talent pipelines, fellowships & safety org incubation', description: 'Growing the pool of strong researchers, policy staff, and safety founders.' },
+  { id: 'cpt_opt_int_public_oversight', stage: 'intervention', title: 'Public awareness & democratic oversight of frontier AI', description: 'Building broad public demand so political leaders act on severe AI risks.' },
+
+  // Bet
+  { id: 'cpt_opt_bet_alignment_res', stage: 'bet', title: 'Technical alignment & scalable oversight research', description: 'Researching training, oversight, and alignment methods for frontier models.' },
+  { id: 'cpt_opt_bet_interp', stage: 'bet', title: 'Interpretability, probes & model forensics', description: 'Building white-box tools to inspect activations and catch deception.' },
+  { id: 'cpt_opt_bet_control', stage: 'bet', title: 'AI Control protocols & red-teaming', description: 'Designing and stress-testing containment protocols for untrusted models.' },
+  { id: 'cpt_opt_bet_evals', stage: 'bet', title: 'Independent frontier evaluations & benchmarks', description: 'Measuring dangerous capabilities, autonomy, and scheming before release.' },
+  { id: 'cpt_opt_bet_lab_safety', stage: 'bet', title: 'Safety engineering inside a frontier AI lab', description: 'Building deployment safeguards, monitoring, and safety cases inside a lab.' },
+  { id: 'cpt_opt_bet_compute_gov', stage: 'bet', title: 'Compute governance, export controls & verification', description: 'Working on chip tracking, cloud KYC, and hardware verification.' },
+  { id: 'cpt_opt_bet_policy', stage: 'bet', title: 'AI policy, legislation & government advising', description: 'Drafting standards, advising policymakers, and building state capacity.' },
+  { id: 'cpt_opt_bet_comms', stage: 'bet', title: 'Public communication, writing & grassroots advocacy', description: 'Making AI risks legible to the public, journalists, and decision-makers.' },
+  { id: 'cpt_opt_bet_bio_cyber', stage: 'bet', title: 'Biosecurity & cyber defense tooling', description: 'Shipping practical bio screening, detection, and hardened cyber defenses.' },
+  { id: 'cpt_opt_bet_dacc', stage: 'bet', title: 'Open decentralized defensive tech (d/acc)', description: 'Building open, pluralist defensive infrastructure without centralizing control.' },
+  { id: 'cpt_opt_bet_field', stage: 'bet', title: 'Field building, fellowships, mentorship & grants', description: 'Funding and training new researchers, founders, and policy talent.' },
+  { id: 'cpt_opt_bet_formal', stage: 'bet', title: 'Formal verification & safe-by-design architectures', description: 'Developing non-agentic or formally bounded AI systems.' },
+
+  // Outcome
+  { id: 'cpt_opt_out_safe_transition', stage: 'outcome', title: 'Safe, verifiable transition to advanced AI', description: 'Advanced AI is deployed only when safety is backed by strong evidence.' },
+  { id: 'cpt_opt_out_slowdown', stage: 'outcome', title: 'Pause or slowdown until safety catches up', description: 'Frontier capability scaling pauses long enough for alignment and governance to mature.' },
+  { id: 'cpt_opt_out_ai_solves', stage: 'outcome', title: 'Aligned AI assistants help solve harder safety problems', description: 'Early trustworthy AI automates safety research before superintelligence.' },
+  { id: 'cpt_opt_out_resilience', stage: 'outcome', title: 'Resilient society where defense outpaces offense', description: 'Physical and digital defenses keep society safe even as AI diffuses.' },
+  { id: 'cpt_opt_out_global_rules', stage: 'outcome', title: 'Binding global rules prevent reckless frontier deployment', description: 'Enforceable international standards stop unverified frontier runs.' },
+  { id: 'cpt_opt_out_pluralist', stage: 'outcome', title: 'Pluralist future with human agency preserved', description: 'Humanity avoids both catastrophe and permanent authoritarian lock-in.' },
+  { id: 'cpt_opt_out_misuse_blocked', stage: 'outcome', title: 'Catastrophic misuse (bio and cyber) reliably blocked', description: 'Strong screening and defenses prevent mass-casualty misuse.' },
+  { id: 'cpt_opt_out_warning_shots', stage: 'outcome', title: 'Warning shots trigger timely, enforceable safeguards', description: 'Early independent evidence drives effective rules before irreversible risk.' },
+];
+
 // Keyword matchers to link Rejected paths onto canonical intervention/premise roots for rich Disagreements!
 const REJECTED_MATCHERS = [
   { rootId: 'cpt_root_global_halt', stage: 'intervention', regex: /\b(pause|halt|full stop|moratorium|ban|stopping|shut it all down)\b/i },
@@ -604,6 +660,26 @@ for (const root of NEAR_NEIGHBOR_ROOTS) {
   phraseToConceptId.set(`${root.stage}::${root.title.toLowerCase()}`, root.id);
   for (const p of root.phrases) {
     phraseToRoot.set(`${root.stage}::${p.toLowerCase()}`, root.id);
+  }
+}
+
+// 1b. Register curated general-purpose starter column options
+for (const opt of STARTER_COLUMN_OPTIONS) {
+  if (!conceptsById.has(opt.id)) {
+    conceptsById.set(opt.id, {
+      schema_version: 1,
+      id: opt.id,
+      stage: opt.stage,
+      title: opt.title,
+      description: opt.description,
+      parent_concept_id: null,
+      root_concept_id: opt.id,
+      tags: ['starter'],
+      created_by_actor_id: null,
+      arweave_tx_id: `seed_tx_${opt.id}`,
+      created_at: NOW_ISO,
+    });
+    phraseToConceptId.set(`${opt.stage}::${opt.title.toLowerCase()}`, opt.id);
   }
 }
 

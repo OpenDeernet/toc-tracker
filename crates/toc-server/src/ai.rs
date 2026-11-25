@@ -113,41 +113,85 @@ pub fn ai_status() -> AiStatusInfo {
     }
 }
 
-/// Deterministic + co-occurrence ranked A/B/C concept suggestions for any stage.
+/// Deterministic + co-occurrence ranked concept suggestions for any stage.
+/// Aggregates usage by `root_concept_id` so canonical concepts rank above one-off phrasings,
+/// and surfaces curated starter options cleanly across all 5 stages.
 pub fn suggest_concepts_for_stage(
     stage: Stage,
     prior_concept_ids: &[String],
     concepts: &[Concept],
     snapshots: &[ToCSnapshot],
 ) -> Vec<StudioSuggestion> {
+    let cmap: HashMap<&str, &Concept> = concepts.iter().map(|c| (c.id.as_str(), c)).collect();
     let prior_set: HashSet<&str> = prior_concept_ids.iter().map(String::as_str).collect();
+    let prior_roots: HashSet<&str> = prior_concept_ids
+        .iter()
+        .map(|id| {
+            cmap.get(id.as_str())
+                .map(|c| c.root_concept_id.as_str())
+                .unwrap_or(id.as_str())
+        })
+        .collect();
+
     let mut usage: HashMap<&str, usize> = HashMap::new();
     let mut co_occur: HashMap<&str, usize> = HashMap::new();
+    let mut only_rejected_roots: HashSet<&str> = HashSet::new();
+    let mut active_roots: HashSet<&str> = HashSet::new();
 
     for snap in snapshots {
-        let snap_concepts: HashSet<&str> = snap.nodes.iter().map(|n| n.concept_id.as_str()).collect();
-        let shared_prior = snap_concepts.iter().filter(|c| prior_set.contains(*c)).count();
-        for cid in &snap_concepts {
-            *usage.entry(cid).or_default() += 1;
+        let snap_roots: HashSet<&str> = snap
+            .nodes
+            .iter()
+            .map(|n| {
+                let r = cmap
+                    .get(n.concept_id.as_str())
+                    .map(|c| c.root_concept_id.as_str())
+                    .unwrap_or(n.concept_id.as_str());
+                if matches!(n.stance, NodeStance::Active | NodeStance::OpenCrux) {
+                    active_roots.insert(r);
+                } else {
+                    only_rejected_roots.insert(r);
+                }
+                r
+            })
+            .collect();
+        let shared_prior = snap_roots.iter().filter(|r| prior_roots.contains(*r)).count();
+        for rid in &snap_roots {
+            *usage.entry(rid).or_default() += 1;
             if shared_prior > 0 {
-                *co_occur.entry(cid).or_default() += shared_prior;
+                *co_occur.entry(rid).or_default() += shared_prior;
             }
         }
     }
 
     let mut candidates: Vec<StudioSuggestion> = concepts
         .iter()
-        .filter(|c| c.stage == stage && !prior_set.contains(c.id.as_str()))
+        .filter(|c| {
+            if c.stage != stage || c.parent_concept_id.is_some() {
+                return false;
+            }
+            if prior_set.contains(c.id.as_str()) || prior_roots.contains(c.root_concept_id.as_str()) {
+                return false;
+            }
+            // Skip long, noisy single-actor rejected blurbs in default suggestions
+            if c.title.chars().count() > 90 {
+                return false;
+            }
+            if only_rejected_roots.contains(c.id.as_str()) && !active_roots.contains(c.id.as_str()) && !c.id.starts_with("cpt_root_") {
+                return false;
+            }
+            true
+        })
         .map(|c| {
             let u = usage.get(c.id.as_str()).copied().unwrap_or(0);
             let co = co_occur.get(c.id.as_str()).copied().unwrap_or(0);
             let is_canonical = c.parent_concept_id.is_none();
-            let reason = if co > 0 {
-                format!("Frequently paired · Used by {} maps", u.max(1))
+            let reason = if co > 0 && u > 0 {
+                format!("Frequently paired · Used by {} maps", u)
             } else if u > 0 {
-                format!("Used by {} maps", u)
+                format!("Used by {} {}", u, if u == 1 { "map" } else { "maps" })
             } else {
-                "Canonical".into()
+                "Common option".into()
             };
             StudioSuggestion {
                 concept: c.clone(),
@@ -159,15 +203,24 @@ pub fn suggest_concepts_for_stage(
         .collect();
 
     candidates.sort_by(|a, b| {
+        let is_curated = |c: &Concept| -> u8 {
+            if c.id.starts_with("cpt_root_") {
+                2
+            } else if c.id.starts_with("cpt_opt_") || c.tags.iter().any(|t| t == "starter") {
+                1
+            } else {
+                0
+            }
+        };
         let ca = co_occur.get(a.concept.id.as_str()).copied().unwrap_or(0);
         let cb = co_occur.get(b.concept.id.as_str()).copied().unwrap_or(0);
         cb.cmp(&ca)
+            .then_with(|| is_curated(&b.concept).cmp(&is_curated(&a.concept)))
             .then_with(|| b.usage_count.cmp(&a.usage_count))
-            .then_with(|| b.is_canonical.cmp(&a.is_canonical))
             .then_with(|| a.concept.title.cmp(&b.concept.title))
     });
 
-    candidates.truncate(6);
+    candidates.truncate(24);
     candidates
 }
 

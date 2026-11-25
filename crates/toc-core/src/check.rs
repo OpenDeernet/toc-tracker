@@ -138,7 +138,14 @@ pub fn run_epistemic_checks(
     }
 
     // 5. Missing common rival intervention (based on shared premises in the field)
-    let my_concepts: HashSet<&str> = nodes.iter().map(|n| n.concept_id.as_str()).collect();
+    let my_roots: HashSet<&str> = nodes
+        .iter()
+        .map(|n| {
+            cmap.get(n.concept_id.as_str())
+                .map(|c| c.root_concept_id.as_str())
+                .unwrap_or(n.concept_id.as_str())
+        })
+        .collect();
     let my_pb_roots: HashSet<&str> = nodes
         .iter()
         .filter(|n| matches!(n.stage, Stage::Premise | Stage::Bottleneck))
@@ -163,16 +170,17 @@ pub fn run_epistemic_checks(
                 continue;
             }
             for n in &snap.nodes {
-                if n.stage == Stage::Intervention
-                    && matches!(n.stance, NodeStance::Active)
-                    && !my_concepts.contains(n.concept_id.as_str())
-                {
+                if n.stage == Stage::Intervention && matches!(n.stance, NodeStance::Active) {
                     let root = cmap
                         .get(n.concept_id.as_str())
                         .map(|c| c.root_concept_id.as_str())
                         .unwrap_or(n.concept_id.as_str());
-                    if !my_concepts.contains(root) {
-                        *rival_counts.entry(root).or_default() += 1;
+                    if !my_roots.contains(root) {
+                        if let Some(rc) = cmap.get(root) {
+                            if rc.parent_concept_id.is_none() && rc.title.chars().count() <= 85 {
+                                *rival_counts.entry(root).or_default() += 1;
+                            }
+                        }
                     }
                 }
             }

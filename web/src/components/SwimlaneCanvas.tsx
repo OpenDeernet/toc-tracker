@@ -58,6 +58,7 @@ function AutoFitOnResize({
   fitKey: string;
 }) {
   const { fitView } = useReactFlow();
+  const lastSizeRef = useRef<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -66,11 +67,20 @@ function AutoFitOnResize({
     const triggerFit = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        fitView({ padding: 0.08, maxZoom: 1.05, duration: 160 });
+        fitView({ padding: 0.08, maxZoom: 1.05, duration: 140 });
       });
     };
     triggerFit();
-    const ro = new ResizeObserver(triggerFit);
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect || rect.width < 10 || rect.height < 10) return;
+      const prev = lastSizeRef.current;
+      if (prev && Math.abs(prev.w - rect.width) < 4 && Math.abs(prev.h - rect.height) < 4) {
+        return;
+      }
+      lastSizeRef.current = { w: rect.width, h: rect.height };
+      triggerFit();
+    });
     ro.observe(el);
     return () => {
       cancelAnimationFrame(rafId);
@@ -119,9 +129,26 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  const singleMode = props.mode === 'single';
+  const singleNodes = singleMode ? props.nodes : null;
+  const singleEdges = singleMode ? props.edges : null;
+  const singleCriteria = singleMode ? props.updateCriteria : null;
+  const singleConcepts = singleMode ? props.concepts : null;
+  const singleSelectedLocalId = singleMode ? props.selectedLocalId : null;
+  const singleSelectedEdgeId = singleMode ? props.selectedEdgeId : null;
+  const singleEditable = singleMode ? props.editable : false;
+  const singleActiveStage = singleMode ? props.activeStage : undefined;
+  const singleOnAddInStage = singleMode ? props.onAddInStage : undefined;
+
+  const compareDiff = !singleMode ? props.diff : null;
+  const compareActorAShort = !singleMode ? props.actorAShort : '';
+  const compareActorBShort = !singleMode ? props.actorBShort : '';
+  const compareSpotlightClusterId = !singleMode ? props.spotlightClusterId : null;
+  const compareSelectedClusterId = !singleMode ? props.selectedClusterId : null;
+
   const { rfNodes, rfEdges, mobileByStage, maxRows } = useMemo(() => {
-    if (props.mode === 'single') {
-      const activeNodes = props.nodes.filter((n) => n.stance === 'active' || n.stance === 'open_crux');
+    if (singleMode && singleNodes && singleEdges && singleCriteria && singleConcepts) {
+      const activeNodes = singleNodes.filter((n) => n.stance === 'active' || n.stance === 'open_crux');
       const byStage: Record<Stage, SnapshotNode[]> = {
         premise: [],
         bottleneck: [],
@@ -146,9 +173,9 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           label: s.label,
           width: LANE_WIDTH,
           height: laneHeight,
-          active: props.activeStage === s.key,
-          editable: Boolean(props.editable),
-          onAdd: props.onAddInStage ? () => props.onAddInStage?.(s.key) : undefined,
+          active: singleActiveStage === s.key,
+          editable: Boolean(singleEditable),
+          onAdd: singleOnAddInStage ? () => singleOnAddInStage(s.key) : undefined,
         };
         builtNodes.push({
           id: `__lane_${s.key}`,
@@ -166,7 +193,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       // 2. Cards (or clickable placeholders in editable mode)
       for (const s of STAGES) {
         const col = byStage[s.key];
-        if (col.length === 0 && props.editable) {
+        if (col.length === 0 && singleEditable) {
           const phData: PlaceholderNodeData = {
             kind: 'placeholder',
             stageLabel: s.label,
@@ -188,8 +215,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
         const colH = col.length * SINGLE_ROW_HEIGHT;
         const startY = CARD_TOP_OFFSET + Math.max(0, (totalH - colH) / 2);
         col.forEach((n, idx) => {
-          const concept = props.concepts[n.concept_id];
-          const criteriaCount = props.updateCriteria.filter((u) => u.target_local_id === n.local_id).length;
+          const concept = singleConcepts[n.concept_id];
+          const criteriaCount = singleCriteria.filter((u) => u.target_local_id === n.local_id).length;
           const data: SingleNodeData = {
             kind: 'single',
             title: concept?.title ?? n.concept_id,
@@ -207,8 +234,8 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             isFork: Boolean(concept?.parent_concept_id),
             criteriaCount,
             citationsCount: n.citations.length,
-            selected: props.selectedLocalId === n.local_id,
-            editable: Boolean(props.editable),
+            selected: singleSelectedLocalId === n.local_id,
+            editable: Boolean(singleEditable),
           };
           builtNodes.push({
             id: n.local_id,
@@ -222,10 +249,10 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
       }
 
       const activeSet = new Set(activeNodes.map((n) => n.local_id));
-      const builtEdges: Edge[] = props.edges
+      const builtEdges: Edge[] = singleEdges
         .filter((e) => activeSet.has(e.source_local_id) && activeSet.has(e.target_local_id))
         .map((e) => {
-          const isSelected = props.selectedEdgeId === e.id;
+          const isSelected = singleSelectedEdgeId === e.id;
           const strokeColor = isSelected
             ? '#18181B'
             : e.relation === 'conflicts_with'
@@ -247,7 +274,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
             style: {
               stroke: strokeColor,
               strokeWidth: isSelected ? 2.6 : 1.7,
-              cursor: props.editable ? 'pointer' : 'default',
+              cursor: singleEditable ? 'pointer' : 'default',
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
@@ -266,7 +293,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
           stage: s,
           items: byStage[s.key].map((n) => ({
             id: n.local_id,
-            title: props.concepts[n.concept_id]?.title ?? n.concept_id,
+            title: singleConcepts[n.concept_id]?.title ?? n.concept_id,
             badge: credencePill(n.credence) || (n.bet_priority === 'primary' ? 'Primary Bet' : ''),
             isCrux: n.is_load_bearing_crux,
           })),
@@ -275,7 +302,14 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     }
 
     // Compare mode — strictly 2 identity colors: Purple (Actor A) & Green (Actor B)
-    const { diff, actorAShort, actorBShort, spotlightClusterId, selectedClusterId } = props;
+    if (!compareDiff) {
+      return { rfNodes: [], rfEdges: [], maxRows: 1, mobileByStage: [] };
+    }
+    const diff = compareDiff;
+    const actorAShort = compareActorAShort;
+    const actorBShort = compareActorBShort;
+    const spotlightClusterId = compareSpotlightClusterId;
+    const selectedClusterId = compareSelectedClusterId;
     const visibleNodes = diff.nodes.filter((dn) => {
       if (dn.category === 'direct_crux_disagreement') return true;
       const actA = dn.node_a && (dn.node_a.stance === 'active' || dn.node_a.stance === 'open_crux');
@@ -441,7 +475,23 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
         })),
       })),
     };
-  }, [props]);
+  }, [
+    singleMode,
+    singleNodes,
+    singleEdges,
+    singleCriteria,
+    singleConcepts,
+    singleSelectedLocalId,
+    singleSelectedEdgeId,
+    singleEditable,
+    singleActiveStage,
+    singleOnAddInStage,
+    compareDiff,
+    compareActorAShort,
+    compareActorBShort,
+    compareSpotlightClusterId,
+    compareSelectedClusterId,
+  ]);
 
   // Smart generous initial height that scales up automatically for dense real-world charts
   const autoHeight = Math.min(760, Math.max(props.defaultHeight ?? 580, 320 + maxRows * 125));
@@ -493,7 +543,7 @@ export function SwimlaneCanvas(props: SwimlaneCanvasProps) {
     }
   }
 
-  const fitKey = `${rfNodes.length}_${rfEdges.length}_${expanded ? 'fs' : 'norm'}`;
+  const fitKey = `${rfNodes.map((n) => n.id).join(',')}|${expanded ? 'fs' : 'norm'}`;
 
   return (
     <>
