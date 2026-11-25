@@ -448,6 +448,7 @@ impl PostgresRepo {
             role_or_affiliation: r.try_get("role_or_affiliation")?,
             one_line_stance: r.try_get("one_line_stance").ok().flatten(),
             contact_preference: r.try_get("contact_preference").ok().flatten(),
+            essay_markdown: r.try_get("essay_markdown").ok().flatten(),
             references: r
                 .try_get::<serde_json::Value, _>("references_json")
                 .ok()
@@ -650,6 +651,24 @@ impl Repository for PostgresRepo {
             .await?;
 
             if exists {
+                // Backfill references & one_line_stance on unclaimed seeded community drafts if empty
+                if !a.references.is_empty() || a.one_line_stance.is_some() {
+                    let refs_json = serde_json::to_value(&a.references)?;
+                    let _ = sqlx::query(
+                        r#"
+                        UPDATE actors
+                        SET references_json = CASE WHEN references_json = '[]'::jsonb THEN $1 ELSE references_json END,
+                            one_line_stance = COALESCE(one_line_stance, $2),
+                            updated_at = NOW()
+                        WHERE id = $3 AND owner_user_id IS NULL
+                        "#,
+                    )
+                    .bind(&refs_json)
+                    .bind(&a.one_line_stance)
+                    .bind(&a.id)
+                    .execute(&self.pool)
+                    .await;
+                }
                 skipped_actors += 1;
                 continue;
             }
@@ -701,13 +720,14 @@ impl Repository for PostgresRepo {
         sqlx::query(
             r#"
             INSERT INTO actors
-                (id, handle, display_name, kind, role_or_affiliation, one_line_stance, contact_preference, references_json, bio_url, avatar_initials, authorship_status, owner_user_id, verified_provider, verified_handle, arweave_pubkey, primary_snapshot_id, tags, created_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                (id, handle, display_name, kind, role_or_affiliation, one_line_stance, contact_preference, essay_markdown, references_json, bio_url, avatar_initials, authorship_status, owner_user_id, verified_provider, verified_handle, arweave_pubkey, primary_snapshot_id, tags, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
             ON CONFLICT (id) DO UPDATE SET
                 display_name = EXCLUDED.display_name,
                 role_or_affiliation = EXCLUDED.role_or_affiliation,
                 one_line_stance = EXCLUDED.one_line_stance,
                 contact_preference = EXCLUDED.contact_preference,
+                essay_markdown = EXCLUDED.essay_markdown,
                 references_json = EXCLUDED.references_json,
                 bio_url = EXCLUDED.bio_url,
                 authorship_status = EXCLUDED.authorship_status,
@@ -727,6 +747,7 @@ impl Repository for PostgresRepo {
         .bind(&actor.role_or_affiliation)
         .bind(&actor.one_line_stance)
         .bind(&actor.contact_preference)
+        .bind(&actor.essay_markdown)
         .bind(serde_json::to_value(&actor.references)?)
         .bind(&actor.bio_url)
         .bind(&actor.avatar_initials)

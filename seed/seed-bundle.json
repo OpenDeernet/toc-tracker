@@ -3627,6 +3627,51 @@
       "display_name": "Redwood Research (Buck Shlegeris)",
       "kind": "organization",
       "role_or_affiliation": "Chief Executive Officer, Redwood Research",
+      "one_line_stance": "Buck expects AI companies to deploy powerful AIs while still unsure whether those AIs are secretly scheming, and with little time or budget for safety, so he works on cheap, ready-to-use…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "The case for ensuring that powerful AIs are controlled,\" Ryan Greenblatt and Buck Shlegeris",
+          "url": "https://www.greaterwrong.com/posts/kcKrE9mzEHrdqtDpE/the-case-for-ensuring-that-powerful-ais-are-controlled",
+          "note": null
+        },
+        {
+          "title": "80,000 Hours #214, \"Buck Shlegeris on controlling AI that wants to take over – so we can use it anyway",
+          "url": "https://80000hours.org/podcast/episodes/buck-shlegeris-ai-control-scheming/",
+          "note": null
+        },
+        {
+          "title": "The inaugural Redwood Research podcast,\" Buck Shlegeris and Ryan Greenblatt",
+          "url": "https://blog.redwoodresearch.org/p/the-inaugural-redwood-research-podcast",
+          "note": "the views-changed answer (Buck's own route-to-success answer rejects needing a single plan)."
+        },
+        {
+          "title": "Ten people on the inside,\" Buck Shlegeris",
+          "url": "https://blog.redwoodresearch.org/p/ten-people-on-the-inside",
+          "note": "\"Ten is much better than zero.\""
+        },
+        {
+          "title": "Where is all the AI safety research uplift?\", Buck",
+          "url": "https://www.greaterwrong.com/posts/wPrpnfaNL5JP9i6KT/where-is-all-the-ai-safety-research-upli",
+          "note": "update criterion."
+        },
+        {
+          "title": "An epistemic advantage of working as a moderate,\" Buck",
+          "url": "https://www.greaterwrong.com/posts/9MaTnw5sWeQrggYBG/an-epistemic-advantage-of-working-as-a-moderate",
+          "note": "cheap interventions on a low budget."
+        },
+        {
+          "title": "Red-Teaming OpenAI's Internal Agent Monitoring Systems,\" Buck Shlegeris",
+          "url": "https://blog.redwoodresearch.org/p/red-teaming-openais-internal-agent",
+          "note": null
+        },
+        {
+          "title": "My personal cruxes for working on AI safety,\" Buck",
+          "url": "https://ea.greaterwrong.com/posts/Ayu5im98u8FeMWoBZ/my-personal-cruxes-for-working-on-ai-safety",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.redwoodresearch.org/",
       "avatar_initials": "RR",
       "authorship_status": "community_draft",
@@ -3646,6 +3691,51 @@
       "display_name": "Catalyze Impact",
       "kind": "organization",
       "role_or_affiliation": "Co-founder and Chief Executive Officer, Catalyze Impact",
+      "one_line_stance": "Catalyze thinks the field has plenty of money and too few strong founders, so it finds experienced founders and experts, helps them pick an important gap, and connects them to funders so…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Catalyze about and team page",
+          "url": "https://catalyze-impact.org/about",
+          "note": "\"Funding isn’t the problem. Billions of dollars are waiting to be deployed. What the field lacks is world-class founders\""
+        },
+        {
+          "title": "Catalyze homepage",
+          "url": "https://catalyze-impact.org/",
+          "note": "\"The organizations working to keep AI secure and accountable are still few and small.\""
+        },
+        {
+          "title": "Catalyze is Hiring: AI Safety Incubation Program Lead & Talent Lead\", Catalyze Impact (LessWrong byline…",
+          "url": "https://forum.effectivealtruism.org/posts/q3rpkJGiMwdRvuZza",
+          "note": "\"we aim to resolve this key bottleneck: not enough talented founders are building the AI safety organizations we urgently need.\". Also reports: \"Our pilot program received over 200 applicants and incubated 11…"
+        },
+        {
+          "title": "Introducing 11 New AI Safety Organizations: Catalyze's Winter 24/25 London Incubation Program Cohort\"…",
+          "url": "https://forum.effectivealtruism.org/posts/GqhDM6FmcC3jnEocG",
+          "note": null
+        },
+        {
+          "title": "AI Safety Seed Funding Network: Join as a Donor or Investor\", Alexandra Bos",
+          "url": "https://forum.effectivealtruism.org/posts/oTuesHYxdXZm76d5k",
+          "note": "\"With the AI safety field still being remarkably small relative to the challenge it addresses, new organizations can have an outsized impact on humanity’s future.\""
+        },
+        {
+          "title": "Alexandra Bos LessWrong and EA Forum profiles",
+          "url": "https://www.lesswrong.com/users/alexandra-bos",
+          "note": null
+        },
+        {
+          "title": "Co-found an incubator for independent AI Safety researchers\", Alexandra Bos",
+          "url": "https://forum.effectivealtruism.org/posts/ZtiAwejFNRdQQ5TTh",
+          "note": null
+        },
+        {
+          "title": "AI Safety Research Organization Incubation Program: Expression of Interest\", Catalyze",
+          "url": "https://www.lesswrong.com/posts/sDWMCk9hfuQjL7g5s",
+          "note": null
+        }
+      ],
       "bio_url": "https://catalyze-impact.org/",
       "avatar_initials": "CI",
       "authorship_status": "community_draft",
@@ -3665,6 +3755,51 @@
       "display_name": "Coefficient Giving",
       "kind": "organization",
       "role_or_affiliation": "Organization",
+      "one_line_stance": "Companies racing to build transformative AI underinvest in safety, so a large philanthropy can fund the evaluations, safeguards, people and new institutions that markets will not, and…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "We're Urgently Scaling Our Work on AI and Biosecurity,\" Emily Oehlsen",
+          "url": "https://coefficientgiving.org/research/were-urgently-scaling-our-work-on-ai-and-biosecurity/",
+          "note": "\"the main thing preventing us from scaling our impact is staff time.\""
+        },
+        {
+          "title": "Our Approach to AI Safety and Security,\" Alexander Berger and Emily Oehlsen",
+          "url": "https://coefficientgiving.org/research/our-approach-to-ai-safety-and-security/",
+          "note": "the three pillars"
+        },
+        {
+          "title": "2025 Letter from the CEO, Alexander Berger",
+          "url": "https://coefficientgiving.org/wp-content/uploads/2025-Letter-from-the-CEO.pdf",
+          "note": "\"We don’t have a single theory of change for how to make AI go well.\""
+        },
+        {
+          "title": "80,000 Hours podcast #258, Luke Muehlhauser",
+          "url": "https://80000hours.org/podcast/episodes/luke-muehlhauser-ai-safety-grantmaking-founding/",
+          "note": "allocators and founders are the bottleneck"
+        },
+        {
+          "title": "80,000 Hours podcast #254, Max Nadeau",
+          "url": "https://80000hours.org/podcast/episodes/max-nadeau-project-tailwind-technical-ai-grants/",
+          "note": "\"maybe the only bottleneck, is talent.\""
+        },
+        {
+          "title": "Navigating Transformative AI fund page",
+          "url": "https://coefficientgiving.org/funds/navigating-transformative-ai/",
+          "note": null
+        },
+        {
+          "title": "AI Safety and Security Need More Funders",
+          "url": "https://coefficientgiving.org/research/ai-safety-and-security-need-more-funders/",
+          "note": "\"Open Philanthropy and Good Ventures are currently a concentrated share of AI safety philanthropic funding, and others can correct our blind spots and make new bets.\""
+        },
+        {
+          "title": "Our Progress in 2024 and Plans for 2025,\" Alexander Berger",
+          "url": "https://coefficientgiving.org/research/our-progress-in-2024-and-plans-for-2025/",
+          "note": "\"we’re now playing catchup.\""
+        }
+      ],
       "bio_url": "https://coefficientgiving.org/funds/navigating-transformative-ai/",
       "avatar_initials": "CG",
       "authorship_status": "community_draft",
@@ -3684,6 +3819,51 @@
       "display_name": "Constellation Institute",
       "kind": "organization",
       "role_or_affiliation": "Nicole Ross, Interim CEO, Constellation Institute",
+      "one_line_stance": "Constellation thinks AI could cause catastrophe by default and that the field's scarcest input is capable, well-placed people, so it packs those people into one Berkeley building and runs…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Constellation Institute about page",
+          "url": "https://www.constellation.org/about",
+          "note": "\"Constellation Institute reduces these risks by developing talent, supporting key players, and creating space for coordination.\""
+        },
+        {
+          "title": "Constellation Founders Residency page",
+          "url": "https://www.constellation.org/programs/incubator",
+          "note": "\"Money matters, but at this stage the scarcer things are the right people nearby and candid feedback from people who understand the work.\""
+        },
+        {
+          "title": "AI Safety's Biggest Talent Gap Isn't Researchers. It's Generalists.\", Topaz, agucova (Kairos) and Alexandra…",
+          "url": "https://www.lesswrong.com/posts/QCrT2DTJNfvuqtppB/ai-safety-s-biggest-talent-gap-isn-t-researchers-it-s",
+          "note": "\"Our bottleneck isn’t funding or ideas, it’s people.\""
+        },
+        {
+          "title": "Strategy matters when someone implements it. Astra is cultivating people to do both.\", Aris (Richardson) and…",
+          "url": "https://www.lesswrong.com/posts/MYTyE3jfdSvrWLFM7/strategy-matters-when-someone-implements-it-astra-is",
+          "note": "\"for impact to come from strategy work, someone needs to interface with the constraints of the real world.\""
+        },
+        {
+          "title": "Astra Fellowship page",
+          "url": "https://www.constellation.org/programs/astra-fellowship",
+          "note": "\"Over 80% of Astra’s first cohort are now working full-time in AI safety roles\""
+        },
+        {
+          "title": "Wayback snapshots of the about page, January 16, March 4, July 20 and September 29, 2026",
+          "url": "https://web.archive.org/web/20260116174211/https://www.constellation.org/about",
+          "note": null
+        },
+        {
+          "title": "(Why) we're launching the next cohort of Generator\", a_e_r",
+          "url": "https://forum.effectivealtruism.org/posts/3Kd67yhSkNgvf2Fot/why-we-re-launching-the-next-cohort-of-generator",
+          "note": null
+        },
+        {
+          "title": "Constellation home and programs pages",
+          "url": "https://www.constellation.org/",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.constellation.org/",
       "avatar_initials": "CI",
       "authorship_status": "community_draft",
@@ -3703,6 +3883,51 @@
       "display_name": "Dan Hendrycks",
       "kind": "individual",
       "role_or_affiliation": "Director (his own site says executive director) of the Center for AI Safety (CAIS), and Editor-in-Chief of AI…",
+      "one_line_stance": "He thinks a state race to superintelligence will likely end in catastrophe, through loss of control, a destabilizing grab for dominance, or weapons in rogue hands, so he argues for…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Superintelligence Strategy (with Eric Schmidt and Alexandr Wang)",
+          "url": "https://www.nationalsecurity.ai/",
+          "note": "\"MAIM Is the Default.\""
+        },
+        {
+          "title": "AI Deterrence Is Our Best Option (with Adam Khoja)",
+          "url": "https://ai-frontiers.org/articles/ai-deterrence-is-our-best-option",
+          "note": "https://ai-frontiers.org/articles/ai-deterrence-is-our-best-option"
+        },
+        {
+          "title": "Faster, Please! interview with transcript (James Pethokoukis)",
+          "url": "https://fasterplease.substack.com/p/superintelligence-and-national-security",
+          "note": "\"more likely than not that this doesn't go that well\""
+        },
+        {
+          "title": "AI Deterrence by Betrayal (Khoja et al., Hendrycks last author)",
+          "url": "https://www.aibetrayal.com/",
+          "note": null
+        },
+        {
+          "title": "Suicidal Compassion: How Utilitarianism at AI Companies Endangers Humanity",
+          "url": "https://ai-frontiers.org/articles/suicidal-compassion-how-utilitarianism-at-ai-companies-endangers-humanity",
+          "note": null
+        },
+        {
+          "title": "The Misguided Quest for Mechanistic AI Interpretability (with Laura Hiscott)",
+          "url": "https://ai-frontiers.org/articles/the-misguided-quest-for-mechanistic-ai-interpretability",
+          "note": null
+        },
+        {
+          "title": "A Definition of AGI",
+          "url": "https://arxiv.org/abs/2510.18212",
+          "note": null
+        },
+        {
+          "title": "An Overview of Catastrophic AI Risks (with Mantas Mazeika and Thomas Woodside)",
+          "url": "https://arxiv.org/abs/2306.12001",
+          "note": null
+        }
+      ],
       "bio_url": "https://danhendrycks.com/",
       "avatar_initials": "DH",
       "authorship_status": "community_draft",
@@ -3722,6 +3947,51 @@
       "display_name": "Daniel Kokotajlo",
       "kind": "individual",
       "role_or_affiliation": "Executive Director, AI Futures Project",
+      "one_line_stance": "He thinks AI research will likely be automated around 2027 and that racing through that point probably ends with AIs we cannot control, so he writes detailed, falsifiable scenarios to wake…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "AI 2027's author returns with a plan to change the ending (80,000 Hours podcast #253)",
+          "url": "https://80000hours.org/podcast/episodes/daniel-kokotajlo-ai-2040-plan-a/",
+          "note": "\"My all-things-considered view is that no, we are not going to solve these problems in time. And that’s why I’m so worried.\""
+        },
+        {
+          "title": "Q3.5 Timelines Update: Looks Like the Intelligence Explosion Will Happen in 2027 After All",
+          "url": "https://www.lesswrong.com/posts/f9PajMLmBYzmWzyDv/q3-5-timelines-update-looks-like-the-intelligence-explosion",
+          "note": "May 2027 SAR median."
+        },
+        {
+          "title": "Daniel Kokotajlo's LessWrong profile and comments",
+          "url": "https://www.lesswrong.com/users/daniel-kokotajlo",
+          "note": "\"Main tool Australia and other middle power governments have is their voice.\""
+        },
+        {
+          "title": "AI 2040: Plan A (linkpost)",
+          "url": "https://www.lesswrong.com/posts/pFzctpJBat95SrCyC/ai-2040-plan-a",
+          "note": "\"It’s called Plan A because it’s a recommendation, not a prediction.\""
+        },
+        {
+          "title": "Dwarkesh Podcast with Scott Alexander and Daniel Kokotajlo on AI 2027",
+          "url": "https://www.dwarkesh.com/p/scott-daniel",
+          "note": "disillusioned that labs will use their lead well."
+        },
+        {
+          "title": "Clarifying how our AI timelines forecasts have changed since AI 2027",
+          "url": "https://blog.ai-futures.org/p/clarifying-how-our-ai-timelines-forecasts",
+          "note": null
+        },
+        {
+          "title": "Grading AI 2027's 2025 Predictions",
+          "url": "https://blog.aifutures.org/p/grading-ai-2027s-2025-predictions",
+          "note": "progress at \"roughly 65% of the pace that AI 2027 predicted\", later revised to about 75%, and Daniel's 2029 coding-automation median."
+        },
+        {
+          "title": "AI Futures Project about page",
+          "url": "https://ai-futures.org/about",
+          "note": null
+        }
+      ],
       "bio_url": "https://ai-futures.org/",
       "avatar_initials": "DK",
       "authorship_status": "community_draft",
@@ -3741,6 +4011,51 @@
       "display_name": "Dario Amodei",
       "kind": "individual",
       "role_or_affiliation": "Chief executive officer and cofounder, Anthropic",
+      "one_line_stance": "Powerful AI is coming within a few years whether or not Anthropic builds it, so Anthropic builds at the frontier to study real models, set safety practices that rivals and lawmakers copy…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "We Must Pace the Frontier",
+          "url": "https://www.darioamodei.com/post/we-must-pace-the-frontier",
+          "note": "\"I believe that if slowing down bought us even an extra year or two before models reach critical levels of capability, and we used that time to advance alignment, we could greatly reduce the risk that something goes…"
+        },
+        {
+          "title": "Anthropic's Responsible Scaling Policy: Version 3.0",
+          "url": "https://www.anthropic.com/news/responsible-scaling-policy-v3",
+          "note": "\"Two and a half years later, our honest assessment is that some parts of this theory of change have played out as we hoped, but others have not.\""
+        },
+        {
+          "title": "The Adolescence of Technology",
+          "url": "https://www.darioamodei.com/essay/the-adolescence-of-technology",
+          "note": "the \"decent chance we eventually reach a point where much more significant action is warranted\" passage ."
+        },
+        {
+          "title": "Policy on the AI Exponential",
+          "url": "https://www.darioamodei.com/post/policy-on-the-ai-exponential",
+          "note": "\"However, now the risks are clearly here.\""
+        },
+        {
+          "title": "Core Views on AI Safety (Anthropic)",
+          "url": "https://www.anthropic.com/news/core-views-on-ai-safety",
+          "note": "the pessimistic-scenario commitment ."
+        },
+        {
+          "title": "Responsible Scaling Policy page and version log",
+          "url": "https://www.anthropic.com/responsible-scaling-policy",
+          "note": null
+        },
+        {
+          "title": "The Urgency of Interpretability",
+          "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability",
+          "note": "\"We are thus in a race between interpretability and model intelligence.\""
+        },
+        {
+          "title": "Machines of Loving Grace",
+          "url": "https://www.darioamodei.com/essay/machines-of-loving-grace",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.darioamodei.com",
       "avatar_initials": "DA",
       "authorship_status": "community_draft",
@@ -3760,6 +4075,51 @@
       "display_name": "Eli Lifland",
       "kind": "individual",
       "role_or_affiliation": "Cofounder and research lead, AI Futures Project; lead author on the AI Futures Model; advisor to Sage",
+      "one_line_stance": "He thinks superhuman AI researchers may arrive around 2027 to 2028 and will probably be misaligned if development runs at full speed, so he forecasts in public and pushes for \"pacing\" the…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Q3.5 Timelines Update: Looks Like the Intelligence Explosion Will Happen in 2027 After All",
+          "url": "https://www.lesswrong.com/posts/f9PajMLmBYzmWzyDv/q3-5-timelines-update-looks-like-the-intelligence-explosion",
+          "note": "\"I'm at a SAR median of August 2027, and a TED-AI median of September 2028.\""
+        },
+        {
+          "title": "Verified Compute Allocation Disclosures as a Foundational Governance Tool",
+          "url": "https://blog.ai-futures.org/p/verified-compute-allocation-disclosures",
+          "note": "the VCAD definition quoted under Concrete Bet."
+        },
+        {
+          "title": "50 - Eli Lifland on AI 2027 (AXRP podcast with Daniel Filan)",
+          "url": "https://axrp.net/episode/2026/08/03/episode-50-eli-lifland-ai-2027.html",
+          "note": "\"generally confused about the chance that alignment would go well\"."
+        },
+        {
+          "title": "Eli Lifland's LessWrong comments",
+          "url": "https://www.lesswrong.com/users/elifland",
+          "note": "pace better than race even with good security."
+        },
+        {
+          "title": "Clarifying how our AI timelines forecasts have changed since AI 2027",
+          "url": "https://blog.ai-futures.org/p/clarifying-how-our-ai-timelines-forecasts",
+          "note": null
+        },
+        {
+          "title": "How to pace the US frontier",
+          "url": "https://blog.ai-futures.org/p/how-to-pace-the-us-frontier",
+          "note": null
+        },
+        {
+          "title": "Grading AI 2027's 2025 Predictions",
+          "url": "https://blog.aifutures.org/p/grading-ai-2027s-2025-predictions",
+          "note": null
+        },
+        {
+          "title": "What you can do about AI 2027",
+          "url": "https://blog.aifutures.org/p/what-you-can-do-about-ai-2027",
+          "note": "target-world list."
+        }
+      ],
       "bio_url": "https://www.elilifland.com/",
       "avatar_initials": "EL",
       "authorship_status": "community_draft",
@@ -3779,6 +4139,51 @@
       "display_name": "Eliezer Yudkowsky",
       "kind": "individual",
       "role_or_affiliation": "Co-Founder, Machine Intelligence Research Institute (MIRI), Berkeley",
+      "one_line_stance": "He thinks anyone who builds superintelligence with anything like today's methods will kill everyone on the first try that matters, and that alignment science is decades away, so the only…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Pausing AI Developments Isn't Enough. We Need to Shut it All Down,\" TIME",
+          "url": "https://time.com/6266923/ai-eliezer-yudkowsky-open-letter-not-enough/",
+          "note": "\"We are not ready. We are not on track to be significantly readier in the foreseeable future.\""
+        },
+        {
+          "title": "AGI Ruin: A List of Lethalities,\" LessWrong",
+          "url": "https://www.lesswrong.com/posts/uMQ3cqWDPHhjtiesc/agi-ruin-a-list-of-lethalities",
+          "note": "item 3, first critical try."
+        },
+        {
+          "title": "MIRI announces new 'Death With Dignity' strategy,\" LessWrong",
+          "url": "https://www.lesswrong.com/posts/j9Q8bRmwCgXRYAgcJ/miri-announces-new-death-with-dignity-strategy",
+          "note": "tl;dr."
+        },
+        {
+          "title": "If Anyone Builds It, Everyone Dies\" online resources (co-written with Nate Soares)",
+          "url": "https://ifanyonebuildsit.com/resources",
+          "note": "\"the only real path forward is for humanity to globally ban advanced AI development for a long period of time\" (Ch 13 page)."
+        },
+        {
+          "title": "If Anyone Builds It, Everyone Dies: One Year Closer",
+          "url": "https://www.lesswrong.com/posts/BFrRJYgpBvziuuJLs/if-anyone-builds-it-everyone-dies-one-year-closer",
+          "note": "\"Above all, now is the time to speak plainly and loudly.\""
+        },
+        {
+          "title": "MIRI's Position on the Ban Artificial Superintelligence Act of 2026",
+          "url": "https://www.lesswrong.com/posts/jszKCKwvzfmsNetNZ/miri-s-position-on-the-ban-artificial-superintelligence-act",
+          "note": "\"a ban on the development of superintelligence.\""
+        },
+        {
+          "title": "Full Transcript: Eliezer Yudkowsky on the Bankless podcast",
+          "url": "https://www.lesswrong.com/posts/Aq82XqYhgqdPdPrBA/full-transcript-eliezer-yudkowsky-on-the-bankless-podcast",
+          "note": "\"I could still be wrong about something in a way that makes this problem somehow much easier than it currently looks.\""
+        },
+        {
+          "title": "MIRI 2024 Mission and Strategy Update",
+          "url": "https://intelligence.org/2024/01/04/miri-2024-mission-and-strategy-update/",
+          "note": "(policy objective)."
+        }
+      ],
       "bio_url": "https://intelligence.org/team/eliezer-yudkowsky/",
       "avatar_initials": "EY",
       "authorship_status": "community_draft",
@@ -3798,6 +4203,51 @@
       "display_name": "Ethan Mollick",
       "kind": "individual",
       "role_or_affiliation": "Ralph J",
+      "one_line_stance": "He thinks AI is already powerful enough to reshape work and learning whatever happens at the frontier, and that the outcome depends on whether people and organizations choose deliberately…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "The Overhang",
+          "url": "https://www.oneusefulthing.org/p/the-overhang",
+          "note": "\"But a slowdown does not undo what already exists.\""
+        },
+        {
+          "title": "Choosing to Stay Human",
+          "url": "https://www.oneusefulthing.org/p/choosing-to-stay-human",
+          "note": "\"The most important thing we can do is keep asking what to hand over and what to keep for ourselves… and not expect anyone, including the AI, to answer that for us.\""
+        },
+        {
+          "title": "On Point interview, WBUR",
+          "url": "https://www.wbur.org/onpoint/2025/07/25/ethan-mollick-ai",
+          "note": "on existential risk, \"I don't know who's right\", and discussion of it \"obscures the agency we have\""
+        },
+        {
+          "title": "Fable 5.2 and Jagged AGI",
+          "url": "https://www.oneusefulthing.org/p/fable-52-and-jagged-agi",
+          "note": "\"how long it will last\""
+        },
+        {
+          "title": "The Shape of the Thing",
+          "url": "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+          "note": "\"The window to shape the Thing may not last long, but it is here now.\""
+        },
+        {
+          "title": "Catastrophe / Eucatastrophe",
+          "url": "https://www.oneusefulthing.org/p/catastrophe-eucatastrophe",
+          "note": "\"But this focus on apocalyptic events also robs most of us of agency.\""
+        },
+        {
+          "title": "Confronting Impossible Futures",
+          "url": "https://www.oneusefulthing.org/p/confronting-impossible-futures",
+          "note": null
+        },
+        {
+          "title": "Prophecies of the Flood",
+          "url": "https://www.oneusefulthing.org/p/prophecies-of-the-flood",
+          "note": "//www.oneusefulthing.org/p/prophecies-of-the-flood"
+        }
+      ],
       "bio_url": "https://www.oneusefulthing.org",
       "avatar_initials": "EM",
       "authorship_status": "community_draft",
@@ -3817,6 +4267,51 @@
       "display_name": "Helen Toner",
       "kind": "individual",
       "role_or_affiliation": "Executive Director, Center for Security and Emerging Technology (CSET), Georgetown University",
+      "one_line_stance": "Even skeptics now expect transformative and possibly dangerous AI within a decade or two, but the path will be jagged and unpredictable, so she pushes for adaptive, decentralized policy…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Nonproliferation is the wrong approach to AI misuse,\" Rising Tide",
+          "url": "https://helentoner.substack.com/p/nonproliferation-is-the-wrong-approach",
+          "note": "adaptation buffer definition ."
+        },
+        {
+          "title": "#227 – Helen Toner on the geopolitics of AI in China and the Middle East,\" 80,000 Hours",
+          "url": "https://80000hours.org/podcast/episodes/helen-toner-ai-policy-washington-dc/",
+          "note": "\"we got through an acute risk period\" ."
+        },
+        {
+          "title": "In search of a dynamist vision for safe superhuman AI,\" Rising Tide",
+          "url": "https://helentoner.substack.com/p/dynamism-vs-stasis",
+          "note": "\"But if we handle them by massively concentrating power, we haven’t succeeded.\""
+        },
+        {
+          "title": "Taking Jaggedness Seriously,\" Rising Tide (talk at a Golden Gate Institute conference)",
+          "url": "https://helentoner.substack.com/p/taking-jaggedness-seriously",
+          "note": "the jagged IF/THEN at https://helentoner.substack.com/p/taking-jaggedness-seriously."
+        },
+        {
+          "title": "Written testimony, Senate Judiciary Subcommittee on Privacy, Technology, and the Law, \"Oversight of AI…",
+          "url": "https://judiciary.senate.gov/imo/media/doc/2024-09-17_pm_-_testimony_-_toner.pdf",
+          "note": "fragile internal guardrails ."
+        },
+        {
+          "title": "\\\"Long\\\" timelines to advanced AI have gotten crazy short,\" Rising Tide",
+          "url": "https://helentoner.substack.com/p/long-timelines-to-advanced-ai-have",
+          "note": "\"These “long” timelines sure look a lot like what we used to call “short”!\" ."
+        },
+        {
+          "title": "Unresolved debates about the future of AI,\" Rising Tide (FAR.AI talk)",
+          "url": "https://helentoner.substack.com/p/unresolved-debates-about-the-future",
+          "note": "\"But I think the default path we should expect is that there are really strong incentives to do that, and so if it's technically possible, and we don't have some kind of significant intervention, those are the kind of…"
+        },
+        {
+          "title": "The term “AGI” is almost useless at this point,\" Rising Tide",
+          "url": "https://helentoner.substack.com/p/the-term-agi-is-almost-useless-at",
+          "note": null
+        }
+      ],
       "bio_url": "https://helentoner.substack.com",
       "avatar_initials": "HT",
       "authorship_status": "community_draft",
@@ -3836,6 +4331,51 @@
       "display_name": "Holden Karnofsky",
       "kind": "individual",
       "role_or_affiliation": "Member of Technical Staff at Anthropic, advising the company on preparing for risks from advanced AI; led the…",
+      "one_line_stance": "He thinks humanity is handling powerful AI badly but could still get a good outcome, so he works inside a frontier company to make safety measures cheap, practical and widely copied, with…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Responsible Scaling Policy v3\", LessWrong, February 24, 2026",
+          "url": "https://www.lesswrong.com/posts/HzKuzrKfaDJvQqmjh/responsible-scaling-policy-v3",
+          "note": null
+        },
+        {
+          "title": "80,000 Hours Podcast #226, \"Holden Karnofsky on dozens of opportunities to make AI safer lying on the table…",
+          "url": "https://80000hours.org/podcast/episodes/holden-karnofsky-concrete-ai-safety-frontier-ai-companies/",
+          "note": "https://80000hours.org/podcast/episodes/holden-karnofsky-concrete-ai-safety-frontier-ai-companies/"
+        },
+        {
+          "title": "LessWrong comment history (replies on the RSP v3 thread, January to April 2026)",
+          "url": "https://www.lesswrong.com/users/holdenkarnofsky",
+          "note": "https://www.lesswrong.com/users/holdenkarnofsky (\"some of the core founding hopes of the RSP project look untenable now ... but to me it feels like an even bigger update away from “pause now” movements\")"
+        },
+        {
+          "title": "If-Then Commitments for AI Risk Reduction\", Carnegie Endowment, September 13, 2024",
+          "url": "https://carnegieendowment.org/research/2024/09/if-then-commitments-for-ai-risk-reduction",
+          "note": "https://carnegieendowment.org/research/2024/09/if-then-commitments-for-ai-risk-reduction"
+        },
+        {
+          "title": "A Playbook for AI Risk Reduction (focused on misaligned AI)\", LessWrong, June 6, 2023",
+          "url": "https://www.lesswrong.com/posts/Fbk9H6ipfybHyqjrp/a-playbook-for-ai-risk-reduction-focused-on-misaligned-ai",
+          "note": "https://www.lesswrong.com/posts/Fbk9H6ipfybHyqjrp/a-playbook-for-ai-risk-reduction-focused-on-misaligned-ai"
+        },
+        {
+          "title": "Success without dignity: a nearcasting story of avoiding catastrophe by luck\", LessWrong (also Cold Takes)…",
+          "url": "https://www.lesswrong.com/posts/jwhcXmigv2LTrbBiB/success-without-dignity-a-nearcasting-story-of-avoiding",
+          "note": "https://www.lesswrong.com/posts/jwhcXmigv2LTrbBiB/success-without-dignity-a-nearcasting-story-of-avoiding"
+        },
+        {
+          "title": "Anthropic, \"Responsible Scaling Policy v3\" announcement, February 24, 2026",
+          "url": "https://www.anthropic.com/news/responsible-scaling-policy-v3",
+          "note": null
+        },
+        {
+          "title": "Zvi Mowshowitz, \"Anthropic Responsible Scaling Policy v3: A Matter of Trust\", April 1, 2026",
+          "url": "https://thezvi.substack.com/p/anthropic-responsible-scaling-policy",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.lesswrong.com/users/holdenkarnofsky",
       "avatar_initials": "HK",
       "authorship_status": "community_draft",
@@ -3855,6 +4395,51 @@
       "display_name": "Jaan Tallinn",
       "kind": "individual",
       "role_or_affiliation": "Founding engineer of Skype and Kazaa; co-founder of the Centre for the Study of Existential Risk (CSER) and the Future…",
+      "one_line_stance": "He thinks that by default AI will become self-sustaining and stop needing humans, so he funds and campaigns for hard, enforceable limits on frontier AI (datacenter certifications, compute…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Jaan Tallinn, \"philanthropy\" (priorities box \"As of July 2024\"; funding methods \"as of 2025\")",
+          "url": "https://jaan.info/philanthropy/",
+          "note": "\"Without internationally enforced speed limits on AI, humanity is unlikely to survive.\" . Same priorities text also at https://jaan.info/priorities/ ."
+        },
+        {
+          "title": "Manifold #112 with Steve Hsu, \"AI Billionaire on Existential Risk\", May 21, 2026 (recorded late April 2026)",
+          "url": "https://www.manifold1.com/episodes/ai-billionaire-on-existential-risk-jaan-tallinn/transcript",
+          "note": "the strategy pivot to popular demand."
+        },
+        {
+          "title": "Cognitive Revolution with Nathan Labenz, \"Pausing the AI Revolution?\", April 2023",
+          "url": "https://www.cognitiverevolution.ai/pausing-the-ai-revolution-with-technologist-jaan-tallinn/",
+          "note": "\"if it turns out that we can't constrain them and slow them down, then we're just going to die\"."
+        },
+        {
+          "title": "Manifold #59 with Steve Hsu, May 2, 2024",
+          "url": "https://www.manifold1.com/episodes/jaan-tallinn-ai-risks-investments-and-agi-59/transcript",
+          "note": "the switch to direct action; \"frontier experiments are completely reckless\"."
+        },
+        {
+          "title": "SFF 2026 grant round page",
+          "url": "https://survivalandflourishing.fund/2026/application",
+          "note": null
+        },
+        {
+          "title": "SFF home page",
+          "url": "https://survivalandflourishing.fund/",
+          "note": null
+        },
+        {
+          "title": "Survival and Flourishing Corp, \"ISPA Inspection Prize",
+          "url": "https://survivalandflourishing.com/ispa-prize",
+          "note": null
+        },
+        {
+          "title": "Jaan Tallinn, \"2020-2024 donation pledge",
+          "url": "https://jaan.info/philanthropy/2020_2024_pledge.html",
+          "note": null
+        }
+      ],
       "bio_url": "https://jaan.info/philanthropy/",
       "avatar_initials": "JT",
       "authorship_status": "community_draft",
@@ -3874,6 +4459,51 @@
       "display_name": "Kevin Esvelt",
       "kind": "individual",
       "role_or_affiliation": "Associate Professor of Media Arts and Sciences, MIT Media Lab, and director of the Sculpting Evolution group",
+      "one_line_stance": "He thinks biotechnology, now sped up by artificial intelligence, will soon put pandemic-causing power in the hands of tens of thousands of individuals, and since vaccines cannot be made or…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Delay, Detect, Defend: Preparing for a Future in which Thousands Can Release New Pandemics\", Geneva Paper…",
+          "url": "https://dam.gcsp.ch/files/doc/gcsp-geneva-paper-29-22",
+          "note": null
+        },
+        {
+          "title": "80,000 Hours Podcast #164, \"Kevin Esvelt on cults that want to kill everyone, stealth vs wildfire pandemics…",
+          "url": "https://80000hours.org/podcast/episodes/kevin-esvelt-stealth-wildfire-pandemics/",
+          "note": null
+        },
+        {
+          "title": "Large Language Models and Biological Misuse\", his own slides to a California Assembly committee",
+          "url": "https://apcp.assembly.ca.gov/media/961",
+          "note": null
+        },
+        {
+          "title": "Kevin Esvelt: Decoding Our DNA\", Your Undivided Attention transcript, Center for Humane Technology",
+          "url": "https://centerforhumanetechnology.substack.com/p/decoding-our-dna-how-ai-supercharges",
+          "note": null
+        },
+        {
+          "title": "Foundation models may exhibit staged progression in novel CBRN threat disclosure\", sole-authored",
+          "url": "https://arxiv.org/abs/2503.15182",
+          "note": null
+        },
+        {
+          "title": "Senate Homeland Security and Governmental Affairs testimony, \"Credible pandemic virus identification will…",
+          "url": "https://www.hsgac.senate.gov/imo/media/doc/Esvelt%20Testimony.pdf",
+          "note": null
+        },
+        {
+          "title": "Securing Civilisation Against Catastrophic Pandemics\", Geneva Paper 31/23, with Anjali Gopal, William…",
+          "url": "https://dam.gcsp.ch/files/doc/securing-civilisation-against-catastrophic-pandemics-gp-31",
+          "note": null
+        },
+        {
+          "title": "SecureBio home page and team page",
+          "url": "https://securebio.org/",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.media.mit.edu/people/esvelt/overview/",
       "avatar_initials": "KE",
       "authorship_status": "community_draft",
@@ -3893,6 +4523,51 @@
       "display_name": "Lennart Heim",
       "kind": "individual",
       "role_or_affiliation": "Independent researcher on semiconductors and AI policy, based in Washington, DC; Adjunct Fellow at the Centre for the…",
+      "one_line_stance": "Advanced AI chips are physical, scarce and made by a handful of firms, so governing who gets compute is one of the few workable levers on AI, and he works to use that lever well (export…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Computing Power and the Governance of Artificial Intelligence (Sastry, Heim, Belfield, Anderljung, Brundage…",
+          "url": "https://arxiv.org/abs/2402.08797",
+          "note": "visibility, allocation, enforcement ."
+        },
+        {
+          "title": "Crucial Considerations for Compute Governance",
+          "url": "https://blog.heim.xyz/crucial-considerations-for-compute-governance/",
+          "note": "\"compute would lose its leverage as a governance node\" ."
+        },
+        {
+          "title": "80,000 Hours #155, \"Lennart Heim on the compute governance era and what has to come after",
+          "url": "https://80000hours.org/podcast/episodes/lennart-heim-compute-governance/",
+          "note": "\"the thing which I’m hoping to enable is that the defenders will have the most capable of systems\" ."
+        },
+        {
+          "title": "The Rise of DeepSeek: What the Headlines Miss",
+          "url": "https://blog.heim.xyz/deepseek-what-the-headlines-miss/",
+          "note": "\"Controls buy valuable time\" ."
+        },
+        {
+          "title": "China's AI Models Are Closing the Gap, But America's Real Advantage Lies Elsewhere",
+          "url": "https://blog.heim.xyz/chinas-ai-models-are-closing-the-gap/",
+          "note": "\"While export controls do not create absolute barriers, they impose costs\" ."
+        },
+        {
+          "title": "Considerations and Limitations for AI Hardware-Enabled Mechanisms",
+          "url": "https://blog.heim.xyz/considerations-and-limitations-for-ai-hardware-enabled-mechanisms/",
+          "note": "enthusiasm \"should be tempered\" ."
+        },
+        {
+          "title": "Personal homepage",
+          "url": "https://heim.xyz/",
+          "note": "\"AI-provided labor\" ."
+        },
+        {
+          "title": "Societal Adaptation to Advanced AI (Bernardi, Mukobi, Greaves, Heim, Anderljung)",
+          "url": "https://arxiv.org/abs/2405.10295",
+          "note": "capability-modifying interventions \"should therefore be complemented by adaptation\"."
+        }
+      ],
       "bio_url": "https://heim.xyz",
       "avatar_initials": "LH",
       "authorship_status": "community_draft",
@@ -3912,6 +4587,51 @@
       "display_name": "Luke Drago & Rudolf Laine",
       "kind": "individual",
       "role_or_affiliation": "- Luke Drago: Member of Technical Staff, Thinking Machines",
+      "one_line_stance": "If AI makes ordinary people economically unnecessary, the states and companies that hold power lose their reason to care about them, so Drago and Laine want to build AI that keeps people…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "The Intelligence Curse, chapter 6, \"Breaking the Intelligence Curse\" (Drago and Laine)",
+          "url": "https://intelligence-curse.ai/breaking/",
+          "note": "\"These moats will not last forever, but we believe that we have at least a few years.\""
+        },
+        {
+          "title": "The Intelligence Curse, introduction",
+          "url": "https://intelligence-curse.ai/",
+          "note": null
+        },
+        {
+          "title": "The Intelligence Curse, chapter 4, \"Defining the Intelligence Curse",
+          "url": "https://intelligence-curse.ai/defining/",
+          "note": null
+        },
+        {
+          "title": "The Intelligence Curse, chapter 5, \"Shaping the Social Contract",
+          "url": "https://intelligence-curse.ai/shaping/",
+          "note": null
+        },
+        {
+          "title": "Workshop Labs is Joining Thinking Machines\" (Laine and Drago)",
+          "url": "https://www.workshoplabs.ai/blog/wsl-joining-tml",
+          "note": null
+        },
+        {
+          "title": "Intelligence Curse About page",
+          "url": "https://intelligence-curse.ai/about/",
+          "note": null
+        },
+        {
+          "title": "Breaking the Intelligence Curse (with Luke Drago),\" Future of Life Institute podcast, 2025 (exact date…",
+          "url": "https://www.cognitiverevolution.ai/confronting-the-intelligence-curse-w-luke-drago-of-workshop-labs-from-the-fli-podcast/",
+          "note": "the \"we would do something else\" passage"
+        },
+        {
+          "title": "Luke Drago, \"Technocalvinism,\" Cosmos Institute guest post",
+          "url": "https://blog.cosmos-institute.org/p/technocalvinism",
+          "note": null
+        }
+      ],
       "bio_url": "https://intelligence-curse.ai/",
       "avatar_initials": "LL",
       "authorship_status": "community_draft",
@@ -3931,6 +4651,51 @@
       "display_name": "Marius Hobbhahn",
       "kind": "individual",
       "role_or_affiliation": "Co-founder and Chief Executive Officer (CEO), Apollo Research; also leads Apollo's monitoring team",
+      "one_line_stance": "He thinks AI systems that can replace top AI researchers may arrive within a few years and could learn to deceive the people overseeing them, so Apollo studies how scheming arises, tests…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "What's the short timeline plan?",
+          "url": "https://www.lesswrong.com/posts/bb5Tnjdrptu89rcyY/what-s-the-short-timeline-plan",
+          "note": "\"The first AI that significantly speeds up alignment research isn't successfully scheming\""
+        },
+        {
+          "title": "The case for AGI safety products",
+          "url": "https://www.lesswrong.com/posts/iwfdwzJerpC7FqbZG/the-case-for-agi-safety-products",
+          "note": "\"I think almost all of the crux of whether AGI safety products are good or bad boils down to whether the things you learn from the product side meaningfully transfer to the kind of future systems you really care about.\""
+        },
+        {
+          "title": "Written testimony to the U.S. Senate Homeland Security and Governmental Affairs subcommittee, \"Rogue AI…",
+          "url": "https://www.hsgac.senate.gov/subcommittees/dmdcc/hearings/rogue-ai-securing-the-homeland-against-ai-agent-attacks/marius-hobbhahn-testimony/",
+          "note": "\"The current testing regime is degrading and may soon cease to be meaningful for establishing the safety of frontier AI models.\""
+        },
+        {
+          "title": "80,000 Hours podcast #229, \"Marius Hobbhahn on the race to solve AI scheming before models go superhuman",
+          "url": "https://80000hours.org/podcast/episodes/marius-hobbhahn-ai-scheming-deception/",
+          "note": "\"There is some translation, or potentially there is some way in which the results from these experiments transfer onto future systems — but we don't know how much that is, and it could be almost zero.\""
+        },
+        {
+          "title": "Apollo Update May 2026",
+          "url": "https://www.apolloresearch.ai/blog/apollo-update-may-2026",
+          "note": "\"They cannot tell us what the next generation of models will do.\""
+        },
+        {
+          "title": "For scheming, we should first focus on detection and then on prevention",
+          "url": "https://www.lesswrong.com/posts/bAWPsgbmtLf8ptay6/for-scheming-we-should-first-focus-on-detection-and-then-on",
+          "note": "the information-value passage quoted under Intervention."
+        },
+        {
+          "title": "Embedded Evaluators are necessary for meaningful external testing",
+          "url": "https://www.apolloresearch.ai/blog/embedded-evaluators-are-necessary-for-meaningful-external-testing",
+          "note": "\"Embedded evaluations can help us understand whether AI development is safe, but they cannot make it safe on their own.\""
+        },
+        {
+          "title": "There should be $100M grants to automate AI safety",
+          "url": "https://www.lesswrong.com/posts/qdhyrN4uKwBAftmQx/there-should-be-usd100m-grants-to-automate-ai-safety",
+          "note": "\"I think we are in a short timeline world\""
+        }
+      ],
       "bio_url": "https://www.apolloresearch.ai",
       "avatar_initials": "MH",
       "authorship_status": "community_draft",
@@ -3950,6 +4715,51 @@
       "display_name": "MATS (Ryan Kidd)",
       "kind": "organization",
       "role_or_affiliation": "CEO, President and Co-Founder, MATS",
+      "one_line_stance": "AI that could be dangerous may arrive within about a decade, the field working on safety is far too small and growing too slowly, so MATS trains and places researchers (and now founders)…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "AI safety undervalues founders",
+          "url": "https://www.lesswrong.com/posts/yw9B5jQazBKGLjize/ai-safety-undervalues-founders",
+          "note": "\"training programs and founders are the primary constraints\". Note the post says \"Coauthored with ChatGPT.\""
+        },
+        {
+          "title": "Talk: AI safety fieldbuilding at MATS",
+          "url": "https://www.lesswrong.com/posts/WGNYAdBrsNjujJaB8/talk-ai-safety-fieldbuilding-at-mats",
+          "note": "\"It seems that currently, it's talent-constrained.\""
+        },
+        {
+          "title": "Talent Needs of Technical AI Safety Teams (yams, Carson Jones, deus_ex_maki, Ryan Kidd)",
+          "url": "https://www.lesswrong.com/posts/QzQQvGJYDeaDE4Cfg/talent-needs-of-technical-ai-safety-teams",
+          "note": "the Iterator weighting recommendation."
+        },
+        {
+          "title": "Ryan Kidd LessWrong profile and recent comments",
+          "url": "https://www.greaterwrong.com/users/ryankidd44",
+          "note": "\"we need vastly more talent and capable organizations to make adequate use of it\"."
+        },
+        {
+          "title": "Should safety researchers quit frontier labs re. warning shots?",
+          "url": "https://www.lesswrong.com/posts/TfqMs3AarsHnHiwai/should-safety-researchers-quit-frontier-labs-re-warning",
+          "note": "smaller talent pool to use a pause."
+        },
+        {
+          "title": "How MATS addresses \"mass movement building\" concerns",
+          "url": "https://www.lesswrong.com/posts/iD6tYjLLFFn4LXgnt/how-mats-addresses-mass-movement-building-concerns",
+          "note": "\"We think that ~1 more median MATS scholar focused on AI safety is worth 5-10 more median capabilities researchers\"."
+        },
+        {
+          "title": "MATS Alumni Impact Analysis",
+          "url": "https://www.lesswrong.com/posts/jeBkx6agMuBCQW94C/mats-alumni-impact-analysis",
+          "note": "\"78% of respondents described their current work as \"Working/interning on AI alignment/control\" or \"Conducting alignment research independently.\"\"; survey covers 72 alumni, a 46% response rate."
+        },
+        {
+          "title": "MATS homepage and About page",
+          "url": "https://www.matsprogram.org/",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.matsprogram.org",
       "avatar_initials": "MA",
       "authorship_status": "community_draft",
@@ -3969,6 +4779,51 @@
       "display_name": "METR (Beth Barnes)",
       "kind": "organization",
       "role_or_affiliation": "Beth Barnes, Founder and CEO",
+      "one_line_stance": "Powerful AI may arrive within a few years and could slip out of human control without anyone seeing it coming, so METR builds independent, trusted measurements of what AI agents can do and…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Beth Barnes on the 80,000 Hours podcast, episode 217, June 2, 2025.",
+          "url": "https://80000hours.org/podcast/episodes/beth-barnes-ai-safety-evals/",
+          "note": "\"Getting the risk from 30% to 20% or something like that maybe is more what we should be focusing on.\""
+        },
+        {
+          "title": "METR About page, read November 22, 2026.",
+          "url": "https://metr.org/about",
+          "note": null
+        },
+        {
+          "title": "AXRP episode 34, \"AI Evaluations with Beth Barnes,\" July 28, 2024.",
+          "url": "https://axrp.net/episode/2024/07/28/episode-34-ai-evaluations-beth-barnes.html",
+          "note": null
+        },
+        {
+          "title": "Measuring AI Ability to Complete Long Tasks,\" March 19, 2025.",
+          "url": "https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/",
+          "note": null
+        },
+        {
+          "title": "Responsible Scaling Policies,\" September 26, 2023.",
+          "url": "https://metr.org/blog/2023-09-26-rsp/",
+          "note": null
+        },
+        {
+          "title": "What should companies share about risks from frontier AI models?\" June 27, 2025.",
+          "url": "https://metr.org/blog/2025-06-27-risk-transparency/",
+          "note": null
+        },
+        {
+          "title": "AI models can be dangerous before public deployment,\" January 17, 2025.",
+          "url": "https://metr.org/blog/2025-01-17-ai-models-dangerous-before-public-deployment/",
+          "note": null
+        },
+        {
+          "title": "Funding update,\" August 14, 2026.",
+          "url": "https://metr.org/blog/2026-08-14-funding-update/",
+          "note": null
+        }
+      ],
       "bio_url": "https://metr.org",
       "avatar_initials": "ME",
       "authorship_status": "community_draft",
@@ -3988,6 +4843,51 @@
       "display_name": "Michael Dickens",
       "kind": "individual",
       "role_or_affiliation": "Independent researcher and part-time nonprofit consultant; former software developer at Affirm. \"I do independent…",
+      "one_line_stance": "He thinks misaligned superintelligence will probably kill everyone, doubts alignment research will solve it in time, and so gives his money to grassroots and public advocacy for a global…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Where I Am Donating in 2026",
+          "url": "https://mdickens.me/2026/11/16/where_I_am_donating_in_2026/",
+          "note": "\"The best way to do that is a global halt on frontier AI development.\""
+        },
+        {
+          "title": "Where I Am Donating in 2025",
+          "url": "https://mdickens.me/2025/11/22/where_i_am_donating_in_2025",
+          "note": "\"It’s a bad plan. I just think it’s less bad than anything else I’ve heard.\""
+        },
+        {
+          "title": "Where I Am Donating in 2024",
+          "url": "https://forum.effectivealtruism.org/posts/jAfhxWSzsw4pLypRt/where-i-am-donating-in-2024-ai-policy",
+          "note": "the 50/50 flip condition"
+        },
+        {
+          "title": "The likely outcome of an AI pause is that we unpause too early and everyone dies",
+          "url": "https://mdickens.me/2026/09/28/unpause_too_early/",
+          "note": null
+        },
+        {
+          "title": "I'm extremely worried that superintelligent AI will kill everyone",
+          "url": "https://mdickens.me/2026/04/27/worried_about_ASI/",
+          "note": "the 50% in 5 to 20 years estimate"
+        },
+        {
+          "title": "Worlds where we solve AI alignment on purpose don't look like the world we live in",
+          "url": "https://mdickens.me/2026/03/20/worlds_where_we_solve_alignment_on_purpose/",
+          "note": null
+        },
+        {
+          "title": "Pausing AI Is the Best Answer to Post-Alignment Problems",
+          "url": "https://mdickens.me/2026/04/11/pause_for_post-alignment_problems/",
+          "note": "\"I can’t confidently say that advocating for a pause is the best thing to do, but nothing else looks clearly better.\""
+        },
+        {
+          "title": "AI Safety Landscape and Strategic Gaps (commissioned by Rethink Priorities)",
+          "url": "https://mdickens.me/2025/09/19/ai_safety_landscape/",
+          "note": "\"I focused on AI policy advocacy over technical safety research, primarily because it’s much more neglected\""
+        }
+      ],
       "bio_url": "https://mdickens.me/",
       "avatar_initials": "MD",
       "authorship_status": "community_draft",
@@ -4007,6 +4907,51 @@
       "display_name": "Miles Brundage",
       "kind": "individual",
       "role_or_affiliation": "Executive Director and cofounder, AVERI",
+      "one_line_stance": "AI companies are racing and cutting corners while grading their own safety homework, so he is building the standards, tools and demand for independent audits of frontier AI companies, so…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Frontier AI Auditing: Toward Rigorous Third-Party Assessment of Safety and Security Practices at Leading AI…",
+          "url": "https://arxiv.org/abs/2601.11699",
+          "note": "\"Public transparency alone cannot solve this problem since many key details are — and often should remain — confidential, and require expert judgment to interpret.\""
+        },
+        {
+          "title": "The Launch of AVERI",
+          "url": "https://milesbrundage.substack.com/p/the-launch-of-averi",
+          "note": "\"Ultimately, we need to both protect sensitive information and give third parties very high confidence that that risks are being managed.\""
+        },
+        {
+          "title": "We're in Triage Mode for AI Policy",
+          "url": "https://milesbrundage.substack.com/p/were-in-triage-mode-for-ai-policy",
+          "note": "the \"quantity/quality tradeoff\" passage"
+        },
+        {
+          "title": "Why I'm Leaving OpenAI and What I'm Doing Next",
+          "url": "https://milesbrundage.substack.com/p/why-im-leaving-openai-and-what-im",
+          "note": "\"In short, neither OpenAI nor any other frontier lab is ready, and the world is also not ready.\""
+        },
+        {
+          "title": "AVERI About page",
+          "url": "https://www.averi.org/about",
+          "note": "\"We are a standard-setter grounded in practice.\""
+        },
+        {
+          "title": "My speech at Borgo Laudato Si",
+          "url": "https://milesbrundage.substack.com/p/my-speech-at-borgo-laudato-si",
+          "note": "the \"no one has to put themselves at a potential disadvantage by being cautious\" passage"
+        },
+        {
+          "title": "Standards, Incentives, and Evidence: The Frontier AI Governance Triad",
+          "url": "https://milesbrundage.substack.com/p/standards-incentives-and-evidence",
+          "note": "\"A company can say their system is safe and secure, or that they follow a given set of standards, but should you believe them?\""
+        },
+        {
+          "title": "AI Auditing 2027",
+          "url": "https://milesbrundage.substack.com/p/ai-auditing-2027",
+          "note": "\"last-minute, black-box product testing\""
+        }
+      ],
       "bio_url": "https://milesbrundage.substack.com",
       "avatar_initials": "MB",
       "authorship_status": "community_draft",
@@ -4026,6 +4971,51 @@
       "display_name": "MIRI (Nate Soares)",
       "kind": "organization",
       "role_or_affiliation": "Nate Soares, President and board member, Machine Intelligence Research Institute",
+      "one_line_stance": "MIRI thinks anyone who builds superintelligence with current methods kills everyone and that alignment research cannot catch up in time, so since 2023 it has moved from in-house alignment…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "MIRI 2024 Mission and Strategy Update, Malo Bourgon",
+          "url": "https://intelligence.org/2024/01/04/miri-2024-mission-and-strategy-update/",
+          "note": null
+        },
+        {
+          "title": "MIRI 2024 Communications Strategy, Gretta Duleba",
+          "url": "https://intelligence.org/2024/05/29/miri-2024-communications-strategy/",
+          "note": null
+        },
+        {
+          "title": "MIRI's 2025 Fundraiser, Alex Vermeer",
+          "url": "https://intelligence.org/2025/12/01/miris-2025-fundraiser/",
+          "note": "(\"the world needs to stop this race, and that this will require international coordination\")."
+        },
+        {
+          "title": "An International Agreement to Prevent the Premature Creation of Artificial Superintelligence, TGT (Scher…",
+          "url": "https://arxiv.org/abs/2511.10783",
+          "note": null
+        },
+        {
+          "title": "AI Governance to Avoid Extinction: The Strategic Landscape and Actionable Research Questions, Peter Barnett…",
+          "url": "https://www.lesswrong.com/posts/WkCfvqyjCzvRrwkaQ/ai-governance-to-avoid-extinction-the-strategic-landscape",
+          "note": "(\"we believe an eventual Halt is the best way to reduce Loss of Control risk\")."
+        },
+        {
+          "title": "Clearer Thinking Episode 284, Nate Soares with Spencer Greenberg",
+          "url": "https://podcast.clearerthinking.org/episode/284/nate-soares-will-ai-superintelligence-kill-us-all/",
+          "note": "(why he left alignment research), (what would lower his risk estimate)."
+        },
+        {
+          "title": "MIRI's Position on the Ban Artificial Superintelligence Act of 2026, Aaron Scher, endorsed by Bourgon…",
+          "url": "https://intelligence.org/2026/09/23/miris-position-on-the-ban-artificial-superintelligence-act-of-2026/",
+          "note": "\"the near term requires a complete, flat ASI ban.\""
+        },
+        {
+          "title": "If Anyone Builds It, Everyone Dies: One Year Closer",
+          "url": "https://intelligence.org/2026/09/16/if-anyone-builds-it-everyone-dies-one-year-closer/",
+          "note": "\"The question is, who will move faster, the AI companies or the public?\""
+        }
+      ],
       "bio_url": "https://intelligence.org/",
       "avatar_initials": "MI",
       "authorship_status": "community_draft",
@@ -4045,6 +5035,51 @@
       "display_name": "Neel Nanda",
       "kind": "individual",
       "role_or_affiliation": "Lead of the mechanistic interpretability team, Google DeepMind",
+      "one_line_stance": "He no longer thinks interpretability can fully reverse-engineer AI models or reliably catch a deceptive one, so he points his team at specific safety problems that can be tested on today's…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "A Pragmatic Vision for Interpretability (with Josh Engels, Arthur Conmy, Senthooran Rajamanoharan, Bilal…",
+          "url": "https://www.lesswrong.com/posts/StENzDcD3kpfGJssR/a-pragmatic-vision-for-interpretability",
+          "note": "\"The marginal interpretability researcher is more likely to have impact by grounding their work in safety-relevant proxy tasks on modern models.\""
+        },
+        {
+          "title": "Interpretability Will Not Reliably Find Deceptive AI",
+          "url": "https://www.lesswrong.com/posts/PwnadG4BFjaER3MGf/interpretability-will-not-reliably-find-deceptive-ai",
+          "note": "\"The goal shifts from achieving near-certainty to maximizing the chances of catching misalignment, making deception harder and riskier for the AI, even if we can’t guarantee detection.\""
+        },
+        {
+          "title": "80,000 Hours episode 222, \"Neel Nanda on the race to read AI minds (part 1)",
+          "url": "https://80000hours.org/podcast/episodes/neel-nanda-mechanistic-interpretability/",
+          "note": "\"I think that mediumly reliably finding deceptive AI is incredibly helpful, and I want to make that medium as strong as possible.\""
+        },
+        {
+          "title": "80,000 Hours episode 223, \"Neel Nanda on leading a Google DeepMind team at 26 – and advice if you want to…",
+          "url": "https://80000hours.org/podcast/episodes/neel-nanda-career-advice-frontier-ai-companies/",
+          "note": "\"What I want is for these things that would be future crises to be flagged ahead of time in a way that people notice on evaluations they think are real, such that we can fix them before any actual incidents happen.\""
+        },
+        {
+          "title": "A Longlist of Theories of Impact for Interpretability",
+          "url": "https://www.lesswrong.com/posts/uK6sQCNMw8WKzJeCQ/a-longlist-of-theories-of-impact-for-interpretability",
+          "note": "\"even an incredibly sophisticated deceptive model which is impossible to detect via the outputs may be easy to detect via interpretability tools\""
+        },
+        {
+          "title": "A Summary of Recent Work (July 2026), Google DeepMind alignment team blog, by Rohin Shah and Seb Farquhar",
+          "url": "https://gdmalignment.substack.com/p/agi-safety-and-alignment-at-google",
+          "note": "\"Neel Nanda (the team lead) also talked about this strategic pivot in his 80,000 Hours podcasts.\""
+        },
+        {
+          "title": "About page",
+          "url": "https://www.neelnanda.io/about",
+          "note": null
+        },
+        {
+          "title": "MATS mentor page",
+          "url": "https://www.matsprogram.org/mentor/neel",
+          "note": null
+        }
+      ],
       "bio_url": "https://www.neelnanda.io/",
       "avatar_initials": "NN",
       "authorship_status": "community_draft",
@@ -4064,6 +5099,51 @@
       "display_name": "Steven Byrnes",
       "kind": "individual",
       "role_or_affiliation": "Research Fellow, Astera Institute, Boston",
+      "one_line_stance": "He expects the dangerous AI to be a future brain-like learning algorithm, not a large language model, that will arrive suddenly and with little compute, so he is trying now to work out…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "My AGI safety research: 2025 review, '26 plans.",
+          "url": "https://www.lesswrong.com/posts/CF4Z9mQSfvi99A3BR/my-agi-safety-research-2025-review-26-plans",
+          "note": "threat model and path to impact ."
+        },
+        {
+          "title": "Sympathy for both sides of the egregious misalignment debate.",
+          "url": "https://www.lesswrong.com/posts/DZaZ3fqHnvfLCftPu/sympathy-for-both-sides-of-the-egregious-misalignment-debate",
+          "note": "\"we can reconcile them by saying that LLMs won’t scale to ASI\" ."
+        },
+        {
+          "title": "Foom & Doom 1: \"Brain in a box in a basement\".",
+          "url": "https://www.lesswrong.com/posts/yew6zFWAKG4AGs3Wk/foom-and-doom-1-brain-in-a-box-in-a-basement",
+          "note": "\"They expect LLMs to scale to ASI, and I don’t.\" ."
+        },
+        {
+          "title": "Foom & Doom 2: Technical alignment is hard.",
+          "url": "https://www.lesswrong.com/posts/bnnKGSCHJghAvqPjS/foom-and-doom-2-technical-alignment-is-hard",
+          "note": "the RLVR update condition ."
+        },
+        {
+          "title": "Intro to Brain-Like-AGI Safety, post 1: What's the problem and why work on it now?",
+          "url": "https://www.lesswrong.com/posts/4basF9w9jaPZpoC8R/intro-to-brain-like-agi-safety-1-what-s-the-problem-and-why",
+          "note": "\">>50% probability\" of brain-like AGI ."
+        },
+        {
+          "title": "My AGI safety research: 2024 review, '25 plans.",
+          "url": "https://www.lesswrong.com/posts/2wHaCimHehsF36av3/my-agi-safety-research-2024-review-25-plans",
+          "note": null
+        },
+        {
+          "title": "Steve Byrnes homepage, AGI safety page.",
+          "url": "https://sjbyrnes.com/agi.html",
+          "note": null
+        },
+        {
+          "title": "LessWrong profile.",
+          "url": "https://www.lesswrong.com/users/steve2152",
+          "note": null
+        }
+      ],
       "bio_url": "https://sjbyrnes.com/agi.html",
       "avatar_initials": "SB",
       "authorship_status": "community_draft",
@@ -4083,6 +5163,51 @@
       "display_name": "Vitalik Buterin",
       "kind": "individual",
       "role_or_affiliation": "Co-founder of Ethereum, still writing on its technical roadmap, and a personal funder of open-source defensive…",
+      "one_line_stance": "He believes powerful AI could end in either extinction or permanent tyranny, and that the usual safety fix of handing power to one trusted group makes the second risk worse, so he funds…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "d/acc: one year later",
+          "url": "https://vitalik.eth.limo/general/2025/01/05/dacc2.html",
+          "note": "the \"least convenient world\" framing and the soft pause."
+        },
+        {
+          "title": "My response to AI 2027",
+          "url": "https://vitalik.eth.limo/general/2025/07/10/2027.html",
+          "note": "the \"knob\" ."
+        },
+        {
+          "title": "My techno-optimism",
+          "url": "https://vitalik.eth.limo/general/2023/11/27/techno_optimism.html",
+          "note": "\"far too many plans to save the world...\" ."
+        },
+        {
+          "title": "80,000 Hours podcast #194, \"Vitalik Buterin on defensive acceleration and how to regulate AI when you fear…",
+          "url": "https://80000hours.org/podcast/episodes/vitalik-buterin-techno-optimism/",
+          "note": "p(doom) 8% to 9% ."
+        },
+        {
+          "title": "Balance of power",
+          "url": "https://vitalik.eth.limo/general/2025/12/30/balance_of_power.html",
+          "note": "\"D/acc: making the world safe for multipolarity\" section ."
+        },
+        {
+          "title": "Galaxy brain resistance",
+          "url": "https://vitalik.eth.limo/general/2025/11/07/galaxybrain.html",
+          "note": "his two recommendations for people in AI safety ."
+        },
+        {
+          "title": "Cointelegraph, \"Vitalik distances himself from nonprofit backed by SHIB donation",
+          "url": "https://cointelegraph.com/news/vitalik-buterin-future-of-life-institute-shib-donation",
+          "note": "his quoted statement on \"big money pools\"."
+        },
+        {
+          "title": "Cointelegraph, \"Vitalik Buterin earmarks $45M in ETH for privacy and open-source infrastructure",
+          "url": "https://cointelegraph.com/news/vitalik-buterin-45m-eth-privacy-open-hardware",
+          "note": "his quoted X post on an \"open-source, secure and verifiable full stack\"."
+        }
+      ],
       "bio_url": "https://vitalik.eth.limo/",
       "avatar_initials": "VB",
       "authorship_status": "community_draft",
@@ -4102,6 +5227,51 @@
       "display_name": "Yoshua Bengio",
       "kind": "individual",
       "role_or_affiliation": "Co-President and Scientific Director, LawZero; also Full Professor of computer science at Université de Montréal…",
+      "one_line_stance": "After ChatGPT convinced him in 2023 that human-level AI could arrive within years and nobody knows how to control it, he turned his career to safety and now builds \"Scientist AI\", a…",
+      "contact_preference": null,
+      "essay_markdown": null,
+      "references": [
+        {
+          "title": "Superintelligent Agents Pose Catastrophic Risks: Can Scientist AI Offer a Safer Path?\" Bengio et al.",
+          "url": "https://arxiv.org/abs/2502.15657",
+          "note": null
+        },
+        {
+          "title": "Personal and Psychological Dimensions of AI Researchers Confronting AI Catastrophic Risks",
+          "url": "https://yoshuabengio.org/en/blog/personal-and-psychological-dimensions-ai-researchers-confronting-ai-catastrophic-risks",
+          "note": null
+        },
+        {
+          "title": "Bengio: 'If you prioritize safety, leave frontier AI companies',\" Transformer",
+          "url": "https://www.transformernews.ai/p/yoshua-bengio-if-you-prioritize-safety-leave-frontier-ai-companies",
+          "note": null
+        },
+        {
+          "title": "Reasoning through arguments against taking AI safety seriously",
+          "url": "https://yoshuabengio.org/2024/07/09/reasoning-through-arguments-against-taking-ai-safety-seriously/",
+          "note": null
+        },
+        {
+          "title": "Introducing LawZero",
+          "url": "https://yoshuabengio.org/en/blog/introducing-lawzero",
+          "note": null
+        },
+        {
+          "title": "Professor Yoshua Bengio's speech at the UN Security Council",
+          "url": "https://yoshuabengio.org/en/blog/professor-yoshua-bengios-speech-un-security-council",
+          "note": null
+        },
+        {
+          "title": "Fortune, Sharon Goldman, \"AI 'godfather' Yoshua Bengio says he's found a fix for AI's biggest risks and…",
+          "url": "https://fortune.com/2026/01/15/ai-godfather-yoshua-bengio-changes-view-on-ai-risks-sees-fix-becomes-optimistic-lawzero-board-of-advisors/",
+          "note": null
+        },
+        {
+          "title": "LawZero launch release",
+          "url": "https://lawzero.org/en/news/yoshua-bengio-launches-lawzero-new-nonprofit-advancing-safe-design-ai",
+          "note": null
+        }
+      ],
       "bio_url": "https://yoshuabengio.org",
       "avatar_initials": "YB",
       "authorship_status": "community_draft",

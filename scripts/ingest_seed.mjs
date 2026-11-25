@@ -444,6 +444,62 @@ function parseChainNodes(chainText) {
   return rawNodes;
 }
 
+function parseSourceReferences(text) {
+  if (!text) return [];
+  const refs = [];
+  const seen = new Set();
+  const lines = text.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const cleaned = line.replace(/^(?:\d+\.\s+|-\s+)/, '').trim();
+    const urlMatch = cleaned.match(/(https?:\/\/[^\s),>"']+)/);
+    if (!urlMatch) continue;
+    const url = urlMatch[1].replace(/[.,;)]+$/, '');
+    if (seen.has(url)) continue;
+    seen.add(url);
+
+    // Title is text before the URL (or markdown link label)
+    let title = '';
+    const mdLink = cleaned.match(/\[([^\]]+)\]\(https?:\/\/[^\s)]+\)/);
+    if (mdLink) {
+      title = mdLink[1].trim();
+    } else {
+      title = cleaned
+        .slice(0, cleaned.indexOf(urlMatch[0]))
+        .replace(/^["'\s]+|["',\s—–:-]+$/g, '')
+        .replace(/\*\*/g, '')
+        .trim();
+    }
+    if (!title || title.length < 3) {
+      try {
+        title = new URL(url).hostname.replace(/^www\./, '');
+      } catch {
+        title = 'Source';
+      }
+    }
+
+    // Extract optional quote/context note from "Best line:" or trailing text
+    const afterUrl = cleaned.slice(cleaned.indexOf(urlMatch[0]) + urlMatch[0].length);
+    const bestLine = afterUrl.match(/Best(?:\s+crux)?\s+line[^:]*:\s*(.+)$/i);
+    let note = null;
+    if (bestLine) {
+      note = truncateClean(
+        bestLine[1].replace(/\(https?:\/\/[^)]+\)/g, '').replace(/\s+/g, ' ').trim(),
+        220
+      );
+    }
+
+    refs.push({
+      title: truncateClean(title, 110),
+      url,
+      note,
+    });
+    if (refs.length >= 8) break;
+  }
+  return refs;
+}
+
 function parseRejectedPaths(text) {
   if (!text) return [];
   const items = [];
@@ -659,6 +715,10 @@ for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
 
   const rawChain = parseChainNodes(chainText);
   const fallbackSources = extractUrlsAndQuotes(sourcesText);
+  const sourceRefs = parseSourceReferences(sourcesText);
+  const oneLineStance = tldr
+    ? truncateClean(tldr.split(/\.\s+(?=[A-Z])/)[0].replace(/\.$/, ''), 190)
+    : null;
 
   const actorId = `act_${slugify(handle)}`;
   const snapshotId = `snp_${slugify(handle)}_v1`;
@@ -836,6 +896,10 @@ for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
     display_name: displayName,
     kind: ORG_HANDLES.has(handle) ? 'organization' : 'individual',
     role_or_affiliation: role,
+    one_line_stance: oneLineStance,
+    contact_preference: null,
+    essay_markdown: null,
+    references: sourceRefs,
     bio_url: bioUrl,
     avatar_initials: initialsOf(displayName),
     authorship_status: 'community_draft',

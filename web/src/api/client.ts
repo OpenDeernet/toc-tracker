@@ -113,6 +113,8 @@ export const api = {
     role_or_affiliation?: string;
     one_line_stance?: string;
     contact_preference?: string;
+    essay_markdown?: string;
+    references?: ReferenceLink[];
     bio_url?: string;
     authorship_status?: 'self_authored' | 'community_draft';
     tags?: string[];
@@ -130,6 +132,7 @@ export const api = {
       role_or_affiliation?: string;
       one_line_stance?: string;
       contact_preference?: string;
+      essay_markdown?: string;
       references?: ReferenceLink[];
       bio_url?: string;
     }
@@ -229,6 +232,7 @@ export const api = {
   getMe() {
     return apiFetch<{
       authenticated: boolean;
+      is_admin?: boolean;
       user?: PublicUser | null;
       owned_actors: OwnedActorLink[];
     }>('/api/v1/me');

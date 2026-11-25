@@ -114,21 +114,27 @@ export function TopNav({ user, ownedActors, onOpenAuth, onLogout }: TopNavProps)
                       </div>
                     </div>
 
-                    {ownedActors.length > 0 && (
-                      <div className="border-b border-[var(--border-hairline)] py-1">
-                        {ownedActors.map((a) => (
-                          <Link
-                            key={a.handle}
-                            to={`/a/${a.handle}`}
-                            onClick={() => setMenuOpen(false)}
-                            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
-                          >
-                            <Map className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
-                            <span className="truncate">{a.display_name}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+                    <div className="border-b border-[var(--border-hairline)] py-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                      >
+                        <User className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
+                        <span>{ownedActors.length > 0 ? 'Edit My Profile' : 'Create My Profile'}</span>
+                      </Link>
+                      {ownedActors.map((a) => (
+                        <Link
+                          key={a.handle}
+                          to={`/a/${a.handle}`}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink-primary)]"
+                        >
+                          <Map className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
+                          <span className="truncate">{a.display_name}</span>
+                        </Link>
+                      ))}
+                    </div>
 
                     <button
                       onClick={() => {

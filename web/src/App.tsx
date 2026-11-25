@@ -9,11 +9,13 @@ import { ActorProfile } from './views/ActorProfile';
 import { CompareDiff } from './views/CompareDiff';
 import { ConceptExplorer } from './views/ConceptExplorer';
 import { CruxesDirectory } from './views/CruxesDirectory';
+import { MyProfile } from './views/MyProfile';
 import { OpenDataDocs } from './views/OpenDataDocs';
 import { Studio } from './views/Studio';
 
 export function App() {
   const [user, setUser] = useState<PublicUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [ownedActors, setOwnedActors] = useState<OwnedActorLink[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -22,6 +24,7 @@ export function App() {
       .getMe()
       .then((res) => {
         setUser(res.user ?? null);
+        setIsAdmin(Boolean(res.is_admin));
         setOwnedActors(res.owned_actors ?? []);
       })
       .catch(() => {});
@@ -34,6 +37,7 @@ export function App() {
   async function handleLogout() {
     await api.logout().catch(() => {});
     setUser(null);
+    setIsAdmin(false);
     setOwnedActors([]);
   }
 
@@ -50,7 +54,18 @@ export function App() {
           <Route path="/" element={<ExploreHome />} />
           <Route
             path="/a/:handle"
-            element={<ActorProfile user={user} onOpenAuth={() => setAuthOpen(true)} />}
+            element={<ActorProfile user={user} isAdmin={isAdmin} onOpenAuth={() => setAuthOpen(true)} />}
+          />
+          <Route
+            path="/profile"
+            element={
+              <MyProfile
+                user={user}
+                ownedActors={ownedActors}
+                onOpenAuth={() => setAuthOpen(true)}
+                onSaved={refreshMe}
+              />
+            }
           />
           <Route path="/compare" element={<CompareDiff />} />
           <Route path="/cruxes" element={<CruxesDirectory />} />

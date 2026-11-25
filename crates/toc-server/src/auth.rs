@@ -203,6 +203,7 @@ pub struct OwnedActorLink {
 #[derive(Serialize)]
 pub struct MeResponse {
     pub authenticated: bool,
+    pub is_admin: bool,
     pub user: Option<PublicUser>,
     pub owned_actors: Vec<OwnedActorLink>,
 }
@@ -251,8 +252,13 @@ pub async fn get_me(
     } else {
         vec![]
     };
+    let is_admin = user
+        .as_ref()
+        .map(crate::routes::is_admin_user)
+        .unwrap_or(false);
     Json(MeResponse {
         authenticated: user.is_some(),
+        is_admin,
         user: user.map(PublicUser::from),
         owned_actors,
     })

@@ -136,6 +136,8 @@ pub struct Actor {
     #[serde(default)]
     pub contact_preference: Option<String>,
     #[serde(default)]
+    pub essay_markdown: Option<String>,
+    #[serde(default)]
     pub references: Vec<ReferenceLink>,
     pub bio_url: Option<String>,
     pub avatar_initials: String,

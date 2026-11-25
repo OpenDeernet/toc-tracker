@@ -550,7 +550,7 @@ struct CreateConceptRequest {
     tags: Option<Vec<String>>,
 }
 
-fn is_admin_user(user: &crate::repo::UserRecord) -> bool {
+pub(crate) fn is_admin_user(user: &crate::repo::UserRecord) -> bool {
     let Ok(raw) = std::env::var("ADMIN_X_HANDLES") else {
         return false;
     };
@@ -682,6 +682,7 @@ struct CreateActorRequest {
     role_or_affiliation: Option<String>,
     one_line_stance: Option<String>,
     contact_preference: Option<String>,
+    essay_markdown: Option<String>,
     references: Option<Vec<ReferenceLink>>,
     bio_url: Option<String>,
     authorship_status: Option<AuthorshipStatus>,
@@ -764,6 +765,10 @@ async fn create_actor(
         contact_preference: req
             .contact_preference
             .map(|s| s.trim().chars().take(180).collect::<String>())
+            .filter(|s| !s.is_empty()),
+        essay_markdown: req
+            .essay_markdown
+            .map(|s| s.trim().chars().take(40_000).collect::<String>())
             .filter(|s| !s.is_empty()),
         references: sanitize_references(req.references.unwrap_or_default()),
         bio_url,
@@ -1006,6 +1011,7 @@ struct UpdateProfileRequest {
     role_or_affiliation: Option<String>,
     one_line_stance: Option<String>,
     contact_preference: Option<String>,
+    essay_markdown: Option<String>,
     references: Option<Vec<ReferenceLink>>,
     bio_url: Option<String>,
 }
@@ -1049,6 +1055,10 @@ async fn update_actor_profile(
         let s: String = contact.trim().chars().take(180).collect();
         actor.contact_preference = if s.is_empty() { None } else { Some(s) };
     }
+    if let Some(essay) = req.essay_markdown {
+        let s: String = essay.trim().chars().take(40_000).collect();
+        actor.essay_markdown = if s.is_empty() { None } else { Some(s) };
+    }
     if let Some(refs) = req.references {
         actor.references = sanitize_references(refs);
     }
@@ -1078,7 +1088,7 @@ async fn update_actor_essay(
     headers: HeaderMap,
     Path(handle): Path<String>,
     Json(req): Json<UpdateEssayRequest>,
-) -> Result<Json<ToCSnapshot>, (StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     if !state.rate_limiter.check("write_essay", &headers, 20, 600) {
         return Err((StatusCode::TOO_MANY_REQUESTS, "Rate limit reached.".into()));
     }
@@ -1086,7 +1096,7 @@ async fn update_actor_essay(
         .await
         .ok_or((StatusCode::UNAUTHORIZED, "Please sign in to edit your written position.".into()))?;
 
-    let actor = state
+    let mut actor = state
         .repo
         .get_actor_by_handle(handle.trim_start_matches('@'))
         .await
@@ -1098,16 +1108,19 @@ async fn update_actor_essay(
         return Err((StatusCode::FORBIDDEN, "Only the verified owner can edit this written position.".into()));
     }
 
+    let trimmed: String = req.essay_markdown.trim().chars().take(40_000).collect();
+    actor.essay_markdown = if trimmed.is_empty() { None } else { Some(trimmed.clone()) };
+    let _ = state.repo.upsert_actor(actor.clone()).await.map_err(internal_err)?;
+
     let snaps = state
         .repo
         .list_snapshots_for_actor(&actor.id)
         .await
         .map_err(internal_err)?;
-    let latest = snaps
-        .first()
-        .ok_or((StatusCode::NOT_FOUND, "No snapshot found".into()))?;
+    let Some(latest) = snaps.first() else {
+        return Ok(Json(serde_json::json!({ "ok": true, "actor": actor })));
+    };
 
-    let trimmed: String = req.essay_markdown.trim().chars().take(40_000).collect();
     let mut next = latest.clone();
     next.id = format!("snp_{}", uuid::Uuid::new_v4().simple());
     next.version = latest.version + 1;
@@ -1123,7 +1136,7 @@ async fn update_actor_essay(
     );
 
     let saved = state.repo.publish_snapshot(next).await.map_err(internal_err)?;
-    Ok(Json(saved))
+    Ok(Json(serde_json::to_value(saved).map_err(internal_err)?))
 }
 
 async fn list_attestations(

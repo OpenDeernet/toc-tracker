@@ -29,7 +29,12 @@ pub fn snapshot_to_markdown(
     md.push_str(&format!("- **Published:** {}\n", snapshot.published_at.format("%Y-%m-%d")));
     md.push_str(&format!("- **Authorship:** {:?}\n\n", actor.authorship_status));
 
-    if let Some(essay) = snapshot.essay_markdown.as_deref().filter(|s| !s.trim().is_empty()) {
+    let essay_opt = snapshot
+        .essay_markdown
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| actor.essay_markdown.as_deref().filter(|s| !s.trim().is_empty()));
+    if let Some(essay) = essay_opt {
         md.push_str("## In Their Own Words\n\n");
         md.push_str(essay.trim());
         md.push_str("\n\n---\n\n");

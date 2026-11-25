@@ -30,14 +30,15 @@ import { SwimlaneCanvas } from '../components/SwimlaneCanvas';
 import { InspectorDrawer } from '../components/InspectorDrawer';
 import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
-type ProfileTab = 'flowchart' | 'brief' | 'criteria' | 'changelog';
+type ProfileTab = 'flowchart' | 'brief' | 'influences' | 'criteria' | 'changelog';
 
 interface ActorProfileProps {
   user: PublicUser | null;
+  isAdmin?: boolean;
   onOpenAuth: () => void;
 }
 
-export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
+export function ActorProfile({ user, isAdmin = false, onOpenAuth }: ActorProfileProps) {
   const { handle = '' } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<ActorDetailResponse | null>(null);
@@ -173,7 +174,9 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
     snapshot?.nodes.filter((n) => n.stance === 'rejected' || n.stance === 'deprioritized') ?? [];
 
   const isUnclaimed = actor.authorship_status === 'community_draft';
-  const isOwner = Boolean(user && actor.owner_user_id === user.id);
+  const isOwner = Boolean(user && (actor.owner_user_id === user.id || isAdmin));
+  const essayContent = snapshot?.essay_markdown || actor.essay_markdown || '';
+  const refLinks = actor.references ?? [];
 
   function handleClaimChoice(mode: 'augment' | 'wipe') {
     setClaimModalOpen(false);
@@ -374,7 +377,8 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
           {(
             [
               ['flowchart', 'Flowchart'],
-              ['brief', snapshot?.essay_markdown ? 'Written Position & Brief' : 'Brief & Essay'],
+              ['brief', essayContent ? 'Written Position & Brief' : 'Brief & Essay'],
+              ['influences', `Influences & Sources (${refLinks.length})`],
               ['criteria', `Update Criteria (${snapshot?.update_criteria.length ?? 0})`],
               ['changelog', `Changelog (${snapshots.length})`],
             ] as [ProfileTab, string][]
@@ -395,8 +399,61 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
       </section>
 
       {!snapshot ? (
-        <div className="mt-6 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-10 text-center text-sm text-[var(--ink-muted)]">
-          No published snapshot yet.
+        <div className="mx-auto mt-5 max-w-4xl space-y-5">
+          {essayContent && (
+            <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+              <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                Linear Written Position (Markdown)
+              </div>
+              <h2 className="mt-0.5 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
+                In Their Own Words
+              </h2>
+              <div className="mt-4">
+                <SimpleMarkdown content={essayContent} />
+              </div>
+            </div>
+          )}
+
+          {refLinks.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+              <h2 className="flex items-center gap-2 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
+                <BookOpen className="h-4 w-4 text-[var(--ink-muted)]" />
+                Influences & Key Reading ({refLinks.length})
+              </h2>
+              <div className="mt-4 space-y-2.5">
+                {refLinks.map((ref, idx) => (
+                  <a
+                    key={idx}
+                    href={ref.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 transition hover:border-[var(--ink-primary)]"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-[var(--ink-primary)] group-hover:underline">
+                        {ref.title}
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)]" />
+                    </div>
+                    {ref.note && <p className="mt-1 text-xs text-[var(--ink-secondary)]">{ref.note}</p>}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 text-center">
+            <p className="text-sm font-semibold text-[var(--ink-primary)]">No 5-column flowchart mapped yet.</p>
+            {isOwner && (
+              <Link
+                to={`/studio?edit=${encodeURIComponent(actor.handle)}`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--ink-primary)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Build Flowchart in Studio
+              </Link>
+            )}
+          </div>
         </div>
       ) : (
         <div className="mt-5">
@@ -466,7 +523,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
           {/* LENS 2: WRITTEN ESSAY (MARKDOWN) + LINEAR BRIEF OUTLINE */}
           {tab === 'brief' && (
             <div className="mx-auto max-w-4xl space-y-6">
-              {(snapshot.essay_markdown || isOwner) && (
+              {(essayContent || isOwner) && (
                 <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
                   <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
                     <div>
@@ -481,12 +538,12 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                       <button
                         type="button"
                         onClick={() => {
-                          setEssayDraft(snapshot.essay_markdown ?? '');
+                          setEssayDraft(essayContent);
                           setEditingEssay(true);
                         }}
                         className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
                       >
-                        {snapshot.essay_markdown ? 'Edit Essay' : '+ Write Essay'}
+                        {essayContent ? 'Edit Essay' : '+ Write Essay'}
                       </button>
                     )}
                   </div>
@@ -518,9 +575,9 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                         </button>
                       </div>
                     </div>
-                  ) : snapshot.essay_markdown ? (
+                  ) : essayContent ? (
                     <div className="mt-4">
-                      <SimpleMarkdown content={snapshot.essay_markdown} />
+                      <SimpleMarkdown content={essayContent} />
                     </div>
                   ) : (
                     <p className="mt-3 text-xs text-[var(--ink-muted)]">
@@ -531,7 +588,7 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 </div>
               )}
 
-              {((actor.references && actor.references.length > 0) || isOwner) && (
+              {((refLinks.length > 0) || isOwner) && (
                 <div className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
                   <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
                     <div>
@@ -549,14 +606,14 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                         onClick={openProfileEditor}
                         className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
                       >
-                        {actor.references && actor.references.length > 0 ? 'Edit Links' : '+ Add Links'}
+                        {refLinks.length > 0 ? 'Edit Links' : '+ Add Links'}
                       </button>
                     )}
                   </div>
 
-                  {actor.references && actor.references.length > 0 ? (
+                  {refLinks.length > 0 ? (
                     <div className="mt-4 space-y-2.5">
-                      {actor.references.map((ref, idx) => (
+                      {refLinks.map((ref, idx) => (
                         <a
                           key={idx}
                           href={ref.url}
@@ -666,6 +723,65 @@ export function ActorProfile({ user, onOpenAuth }: ActorProfileProps) {
                 </div>
               )}
               </div>
+            </div>
+          )}
+
+          {/* LENS 2B: DEDICATED INFLUENCES & KEY READING TAB */}
+          {tab === 'influences' && (
+            <div className="mx-auto max-w-4xl rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
+                <div>
+                  <div className="font-mono-meta text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">
+                    Context & Foundational Links
+                  </div>
+                  <h2 className="mt-0.5 flex items-center gap-2 font-editorial text-xl font-semibold text-[var(--ink-primary)]">
+                    <BookOpen className="h-4 w-4 text-[var(--ink-muted)]" />
+                    Influences & Key Reading ({refLinks.length})
+                  </h2>
+                </div>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={openProfileEditor}
+                    className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                  >
+                    {refLinks.length > 0 ? 'Edit Links' : '+ Add Links'}
+                  </button>
+                )}
+              </div>
+
+              {refLinks.length > 0 ? (
+                <div className="mt-4 space-y-2.5">
+                  {refLinks.map((ref, idx) => (
+                    <a
+                      key={idx}
+                      href={ref.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group block rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-4 transition hover:border-[var(--ink-primary)]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-[var(--ink-primary)] group-hover:underline">
+                          {ref.title}
+                        </span>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)] group-hover:text-[var(--ink-primary)]" />
+                      </div>
+                      {ref.note && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-secondary)]">
+                          {ref.note}
+                        </p>
+                      )}
+                      <div className="mt-1.5 truncate font-mono-meta text-[10px] text-[var(--ink-muted)]">
+                        {ref.url}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-[var(--ink-muted)]">
+                  No key reading links added yet.
+                </p>
+              )}
             </div>
           )}
 
